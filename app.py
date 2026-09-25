@@ -167,7 +167,7 @@ documents = load_pdf_documents()
 
 
     
-    response_length = st.selectbox(
+response_length = st.selectbox(
         "Response Length",
         [
             "Short",
