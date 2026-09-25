@@ -101,7 +101,6 @@ st.info(
 # ============================================================
 # SIDEBAR
 # ============================================================
-
 with st.sidebar:
 
     st.header("🎓 Learning Settings")
@@ -159,7 +158,7 @@ if stats["documents"]:
 
 else:
 
-    st.sidebar.warning(
+st.sidebar.warning(
         "No PDF documents found."
     )
 
@@ -177,11 +176,9 @@ response_length = st.selectbox(
         index=1,
     )
 
-    st.divider()
-
-    st.markdown("### 🔬 Project Status")
-
-    st.markdown(
+st.divider()
+st.markdown("### 🔬 Project Status")
+st.markdown(
         """
         **Phase 1**
         
