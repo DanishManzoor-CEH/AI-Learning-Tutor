@@ -126,7 +126,14 @@ with st.sidebar:
             "Socratic Learning",
         ],
     )
-    
+    response_length = st.selectbox(
+    "Response Length",
+    ["Short", "Medium", "Detailed"],
+    index=1
+)
+
+
+
 st.sidebar.divider()
 
 st.sidebar.subheader("📚 Knowledge Base")
@@ -143,23 +150,20 @@ st.sidebar.write(
 
 if stats["documents"]:
 
+    st.sidebar.success("Knowledge base available")
+
     with st.sidebar.expander("View documents"):
 
         for document in stats["documents"]:
             st.write(f"• {document}")
-else:
-    st.sidebar.warning("No PDF documents found.")
 
+else:
+
+    st.sidebar.warning(
+        "No PDF documents found."
+    )
 
 documents = load_pdf_documents()
-if documents:
-    st.sidebar.success(
-        f"Loaded {len(documents)} pages"
-    )
-else:
-    st.sidebar.warning(
-        "Add PDF files to data/documents/"
-    )
 
 
     
