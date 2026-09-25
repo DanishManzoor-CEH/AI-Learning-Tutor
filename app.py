@@ -6,6 +6,7 @@ from src.document_loader import (
     get_document_statistics,
 )
 
+
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
@@ -14,47 +15,34 @@ st.set_page_config(
     page_title="AI Learning Tutor",
     page_icon="🎓",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
 
 # ============================================================
-# CUSTOM CSS
+# CUSTOM STYLING
 # ============================================================
 
 st.markdown(
     """
     <style>
-        .main-title {
-            font-size: 42px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
+    .main-title {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
 
-        .subtitle {
-            font-size: 18px;
-            color: #666666;
-            margin-bottom: 25px;
-        }
+    .subtitle {
+        font-size: 18px;
+        color: #666666;
+        margin-bottom: 25px;
+    }
 
-        .feature-card {
-            padding: 18px;
-            border-radius: 12px;
-            border: 1px solid #dddddd;
-            margin-bottom: 12px;
-        }
-
-        .source-box {
-            padding: 12px;
-            border-radius: 8px;
-            background-color: #f5f5f5;
-            margin-top: 10px;
-        }
-
-        .disclaimer {
-            font-size: 13px;
-            color: #777777;
-        }
+    .source-box {
+        padding: 12px;
+        border-radius: 8px;
+        background-color: #f5f7fa;
+        margin-top: 10px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -71,41 +59,37 @@ st.markdown(
 )
 
 st.markdown(
-    """
-    <div class="subtitle">
-        RAG-Based Responsible AI Tutor for Cybersecurity Learning
-    </div>
-    """,
+    '<div class="subtitle">'
+    "A responsible AI tutor for cybersecurity learning"
+    "</div>",
     unsafe_allow_html=True,
 )
 
 
 # ============================================================
-# INTRODUCTION
+# GROQ CLIENT
 # ============================================================
 
-st.info(
-    """
-    **Welcome to the AI Learning Tutor!**
+try:
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+except Exception:
+    st.error(
+        "GROQ_API_KEY is not configured. "
+        "Please add it to Streamlit Cloud Secrets."
+    )
+    st.stop()
 
-    This project is being developed as a research-oriented
-    educational AI system. Its goal is to help students learn
-    cybersecurity concepts through explanations, examples,
-    hints, questions, and personalized learning support.
 
-    🚧 Phase 1: LLM Foundation
-    """
-)
+client = Groq(api_key=groq_api_key)
 
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR - LEARNING SETTINGS
 # ============================================================
+
 with st.sidebar:
 
-    st.header("🎓 Learning Settings")
-
-    st.divider()
+    st.header("⚙️ Learning Settings")
 
     student_level = st.selectbox(
         "Student Level",
@@ -114,6 +98,7 @@ with st.sidebar:
             "Intermediate",
             "Advanced",
         ],
+        index=0,
     )
 
     learning_mode = st.selectbox(
@@ -124,14 +109,23 @@ with st.sidebar:
             "Technical Explanation",
             "Socratic Learning",
         ],
+        index=0,
     )
+
     response_length = st.selectbox(
-    "Response Length",
-    ["Short", "Medium", "Detailed"],
-    index=1
-)
+        "Response Length",
+        [
+            "Short",
+            "Medium",
+            "Detailed",
+        ],
+        index=1,
+    )
 
 
+# ============================================================
+# SIDEBAR - KNOWLEDGE BASE
+# ============================================================
 
 st.sidebar.divider()
 
@@ -146,201 +140,263 @@ st.sidebar.write(
 st.sidebar.write(
     f"📑 Pages loaded: {stats['page_count']}"
 )
+
 if stats["documents"]:
 
-    st.sidebar.success("Knowledge base available")
+    st.sidebar.success(
+        "Knowledge base available"
+    )
 
-    with st.sidebar.expander("View documents"):
+    with st.sidebar.expander(
+        "View documents"
+    ):
 
         for document in stats["documents"]:
-            st.write(f"• {document}")
+
+            st.write(
+                f"• {document}"
+            )
 
 else:
-st.sidebar.warning(
+
+    st.sidebar.warning(
         "No PDF documents found."
     )
 
+
+# ============================================================
+# LOAD KNOWLEDGE BASE DOCUMENTS
+# ============================================================
+
 documents = load_pdf_documents()
-
-
-    
-response_length = st.selectbox(
-        "Response Length",
-        [
-            "Short",
-            "Medium",
-            "Detailed",
-        ],
-        index=1,
-    )
-
-st.divider()
-st.markdown("### 🔬 Project Status")
-st.markdown(
-        """
-        **Phase 1**
-        
-        ✅ Streamlit UI  
-        ✅ Groq LLM  
-        ✅ Adaptive learning level  
-        ✅ Learning modes  
-        
-        **Coming Next**
-        
-        ⏳ PDF knowledge base  
-        ⏳ RAG  
-        ⏳ FAISS  
-        ⏳ Source citations  
-        ⏳ Quiz generation  
-        ⏳ Learning analytics  
-        ⏳ Evaluation
-        """
-    )
-
-
-# ============================================================
-# GROQ API CONFIGURATION
-# ============================================================
-
-try:
-
-    groq_api_key = st.secrets["GROQ_API_KEY"]
-
-except Exception:
-
-    st.error(
-        """
-        🔑 **Groq API key not configured.**
-
-        Please add your Groq API key to:
-
-        **Streamlit Cloud → App Settings → Secrets**
-
-        Use:
-
-        `GROQ_API_KEY="your_api_key_here"`
-        """
-    )
-
-    st.stop()
-
-
-# ============================================================
-# INITIALIZE GROQ CLIENT
-# ============================================================
-
-client = Groq(api_key=groq_api_key)
 
 
 # ============================================================
 # SYSTEM PROMPT
 # ============================================================
 
-def build_system_prompt(
-    student_level,
-    learning_mode,
-    response_length,
-):
+SYSTEM_PROMPT = f"""
+You are an AI Learning Tutor specializing in cybersecurity education.
 
-    length_instruction = {
-        "Short": "Keep the response concise and focused.",
-        "Medium": "Provide a balanced explanation with useful examples.",
-        "Detailed": "Provide a detailed educational explanation with examples and important technical details.",
-    }
+Your purpose is to help students understand cybersecurity concepts clearly,
+accurately, and responsibly.
 
-    mode_instruction = {
-        "Explain": """
-        Explain the concept clearly and logically.
-        Include a practical cybersecurity example when appropriate.
-        """,
-
-        "Simple Explanation": """
-        Explain the concept using simple language.
-        Use an analogy or real-world example when helpful.
-        Avoid unnecessary technical complexity.
-        """,
-
-        "Technical Explanation": """
-        Provide a technically detailed explanation.
-        Include relevant protocols, mechanisms, architecture,
-        security implications, and practical examples.
-        """,
-
-        "Socratic Learning": """
-        Do not immediately provide the complete answer.
-        Guide the student through the concept using questions,
-        hints, and reasoning.
-        Encourage the student to think about the problem.
-        """
-    }
-
-    return f"""
-You are an AI Learning Tutor specializing in cybersecurity.
-
-Your role is to support learning rather than simply provide
-answers.
-
-STUDENT LEVEL:
+Student level:
 {student_level}
 
-LEARNING MODE:
+Learning mode:
 {learning_mode}
 
-RESPONSE LENGTH:
+Response length:
 {response_length}
 
-EDUCATIONAL PRINCIPLES:
+Teaching principles:
 
 1. Explain concepts accurately.
 2. Adapt explanations to the student's level.
-3. Encourage understanding rather than memorization.
-4. Use practical cybersecurity examples.
-5. Break difficult concepts into smaller steps.
-6. Ask a useful follow-up question when appropriate.
-7. Clearly distinguish facts from examples or assumptions.
-8. Never invent references or sources.
-9. If you are uncertain, explicitly acknowledge uncertainty.
-10. Do not claim that information comes from a document because
-    no knowledge documents have been connected yet.
-11. Avoid unnecessarily revealing sensitive information.
-12. For cybersecurity topics, remain within legitimate educational
-    and defensive contexts.
-
-LEARNING MODE INSTRUCTIONS:
-
-{mode_instruction[learning_mode]}
-
-RESPONSE LENGTH INSTRUCTIONS:
-
-{length_instruction[response_length]}
-
-When appropriate, structure the answer as:
-
-### Explanation
-
-### Example
-
-### Key Points
-
-### Think About This
-
-The final section should encourage active learning.
+3. Use simple examples when appropriate.
+4. Explain technical terminology.
+5. Encourage understanding rather than memorization.
+6. Ask a short follow-up question when useful.
+7. Never intentionally provide false information.
+8. If you are uncertain about a factual claim, clearly indicate uncertainty.
+9. For cybersecurity topics, keep explanations educational and defensive.
+10. Do not claim that information came from a source unless it actually did.
 """
 
 
 # ============================================================
-# QUESTION INPUT
+# RESPONSE LENGTH INSTRUCTIONS
 # ============================================================
+
+if response_length == "Short":
+
+    length_instruction = """
+Keep the answer concise.
+Use a short explanation and one simple example when useful.
+"""
+
+elif response_length == "Detailed":
+
+    length_instruction = """
+Provide a detailed explanation.
+Use headings, examples, technical details, and practical context where useful.
+"""
+
+else:
+
+    length_instruction = """
+Provide a balanced explanation.
+Explain the main concept clearly and include a useful example.
+"""
+
+
+# ============================================================
+# LEARNING MODE INSTRUCTIONS
+# ============================================================
+
+if learning_mode == "Simple Explanation":
+
+    mode_instruction = """
+Use very simple language.
+Explain difficult technical terms in plain language.
+Assume the student is still developing their fundamentals.
+"""
+
+elif learning_mode == "Technical Explanation":
+
+    mode_instruction = """
+Provide a technically detailed explanation.
+Include relevant protocols, mechanisms, components, and security considerations.
+"""
+
+elif learning_mode == "Socratic Learning":
+
+    mode_instruction = """
+Teach using a Socratic approach.
+Instead of immediately giving every detail, guide the student with questions
+and hints that encourage them to reason about the concept.
+"""
+
+else:
+
+    mode_instruction = """
+Explain the concept directly and clearly.
+Use examples when they improve understanding.
+"""
+
+
+# ============================================================
+# AI RESPONSE FUNCTION
+# ============================================================
+
+def generate_tutor_response(
+    question,
+    student_level,
+    learning_mode,
+    response_length,
+):
+    """
+    Generate an educational response using Groq.
+    """
+
+    prompt = f"""
+Student question:
+
+{question}
+
+Student level:
+{student_level}
+
+Learning mode:
+{learning_mode}
+
+Response length:
+{response_length}
+
+{length_instruction}
+
+{mode_instruction}
+
+Please answer the student's question as an educational cybersecurity tutor.
+
+When appropriate, structure the answer using:
+
+- Explanation
+- Key Points
+- Example
+- Security Relevance
+- Quick Check
+
+Do not unnecessarily include every section if it does not help answer the question.
+"""
+
+    try:
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT,
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0.3,
+            max_tokens=1500,
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as error:
+
+        return (
+            "⚠️ An error occurred while generating the response.\n\n"
+            f"Error: {error}"
+        )
+
+
+# ============================================================
+# MAIN KNOWLEDGE BASE INFORMATION
+# ============================================================
+
+st.divider()
+
+st.subheader("📚 Cybersecurity Knowledge Base")
+
+if documents:
+
+    st.write(
+        f"The tutor currently has access to "
+        f"**{len(documents)} PDF pages**."
+    )
+
+    with st.expander(
+        "🔎 View loaded knowledge sources"
+    ):
+
+        for document in documents:
+
+            source = document.get(
+                "source",
+                "Unknown source",
+            )
+
+            page = document.get(
+                "page",
+                "Unknown page",
+            )
+
+            st.write(
+                f"📄 **{source}** — Page {page}"
+            )
+
+else:
+
+    st.info(
+        "No PDF documents are currently available. "
+        "Add cybersecurity PDFs to `data/documents/`."
+    )
+
+
+# ============================================================
+# ASK YOUR AI TUTOR
+# ============================================================
+
+st.divider()
 
 st.subheader("💬 Ask Your AI Tutor")
 
 question = st.text_area(
     "What would you like to learn?",
     placeholder=(
-        "Example:\n"
-        "Explain the TCP three-way handshake and why it is important."
+        "For example: What is cybersecurity? "
+        "Explain the TCP three-way handshake."
     ),
-    height=150,
+    height=120,
 )
 
 
@@ -349,14 +405,13 @@ question = st.text_area(
 # ============================================================
 
 ask_button = st.button(
-    "🚀 Ask Tutor",
+    "🚀 Ask AI Tutor",
     type="primary",
-    use_container_width=True,
 )
 
 
 # ============================================================
-# GENERATE RESPONSE
+# PROCESS QUESTION
 # ============================================================
 
 if ask_button:
@@ -364,119 +419,64 @@ if ask_button:
     if not question.strip():
 
         st.warning(
-            "Please enter a cybersecurity question first."
+            "Please enter a question first."
         )
 
     else:
 
-        system_prompt = build_system_prompt(
-            student_level=student_level,
-            learning_mode=learning_mode,
-            response_length=response_length,
-        )
+        with st.spinner(
+            "🧠 Your AI Tutor is preparing an answer..."
+        ):
 
-        try:
-
-            with st.spinner(
-                "🤖 Your AI tutor is thinking..."
-            ):
-
-                completion = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": system_prompt,
-                        },
-                        {
-                            "role": "user",
-                            "content": question,
-                        },
-                    ],
-
-                    temperature=0.3,
-                    max_tokens=2000,
-                )
-
-                answer = completion.choices[0].message.content
-
-            st.success("Tutor response generated.")
-
-            st.markdown("## 📚 Tutor Response")
-
-            st.markdown(answer)
-
-        except Exception as error:
-
-            st.error(
-                "An error occurred while generating the response."
+            answer = generate_tutor_response(
+                question=question,
+                student_level=student_level,
+                learning_mode=learning_mode,
+                response_length=response_length,
             )
 
-            with st.expander("Technical error details"):
+        st.subheader("🤖 Tutor Response")
 
-                st.code(str(error))
+        st.markdown(answer)
 
 
 # ============================================================
-# PROJECT INFORMATION
+# RESEARCH INFORMATION
 # ============================================================
 
 st.divider()
 
-st.subheader("🔬 About This Project")
+with st.expander(
+    "🔬 About this Research Project"
+):
 
-col1, col2, col3 = st.columns(3)
-
-with col1:
-
-    st.markdown(
+    st.write(
         """
-        <div class="feature-card">
+        This project explores how Large Language Models and
+        Retrieval-Augmented Generation can support cybersecurity education.
 
-        ### 🧠 Adaptive Learning
+        The research direction focuses on:
 
-        Responses are adapted to the student's
-        selected learning level.
-
-        </div>
-        """,
-        unsafe_allow_html=True,
+        • Educational AI
+        • Large Language Models
+        • Retrieval-Augmented Generation (RAG)
+        • Source-grounded answers
+        • Responsible AI
+        • Hallucination reduction
+        • Adaptive learning
+        • Student feedback
+        • Cybersecurity education
+        """
     )
 
-
-with col2:
-
     st.markdown(
         """
-        <div class="feature-card">
+        **Planned research question:**
 
-        ### 🤖 LLM-Based Tutor
-
-        Uses a large language model to provide
-        interactive educational support.
-
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-with col3:
-
-    st.markdown(
+        How can Retrieval-Augmented Generation improve the factual
+        accuracy, source-groundedness, and learning-support quality
+        of an LLM-based cybersecurity tutoring system?
         """
-        <div class="feature-card">
-
-        ### 🔬 Research-Oriented
-
-        Future versions will include RAG,
-        evaluation, learning analytics,
-        and responsible AI experiments.
-
-        </div>
-        """,
-        unsafe_allow_html=True,
     )
 
 
@@ -486,17 +486,7 @@ with col3:
 
 st.divider()
 
-st.markdown(
-    """
-    <div class="disclaimer">
-
-    🎓 AI Learning Tutor — Phase 1
-
-    This system is an educational prototype. AI-generated
-    responses may contain errors and should be verified
-    against reliable learning resources.
-
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.caption(
+    "AI Learning Tutor | RAG-Based Responsible AI Tutor "
+    "for Cybersecurity Learning"
 )
