@@ -146,7 +146,6 @@ st.sidebar.write(
 st.sidebar.write(
     f"📑 Pages loaded: {stats['page_count']}"
 )
-
 if stats["documents"]:
 
     st.sidebar.success("Knowledge base available")
@@ -157,7 +156,6 @@ if stats["documents"]:
             st.write(f"• {document}")
 
 else:
-
 st.sidebar.warning(
         "No PDF documents found."
     )
