@@ -126,7 +126,43 @@ with st.sidebar:
             "Socratic Learning",
         ],
     )
+    
+st.sidebar.divider()
 
+st.sidebar.subheader("📚 Knowledge Base")
+
+stats = get_document_statistics()
+
+st.sidebar.write(
+    f"📄 PDFs: {stats['pdf_count']}"
+)
+
+st.sidebar.write(
+    f"📑 Pages loaded: {stats['page_count']}"
+)
+
+if stats["documents"]:
+
+    with st.sidebar.expander("View documents"):
+
+        for document in stats["documents"]:
+            st.write(f"• {document}")
+else:
+    st.sidebar.warning("No PDF documents found.")
+
+
+documents = load_pdf_documents()
+if documents:
+    st.sidebar.success(
+        f"Loaded {len(documents)} pages"
+    )
+else:
+    st.sidebar.warning(
+        "Add PDF files to data/documents/"
+    )
+
+
+    
     response_length = st.selectbox(
         "Response Length",
         [
