@@ -1,6 +1,10 @@
 import streamlit as st
 from groq import Groq
 
+from src.document_loader import (
+    load_pdf_documents,
+    get_document_statistics,
+)
 
 # ============================================================
 # PAGE CONFIGURATION
