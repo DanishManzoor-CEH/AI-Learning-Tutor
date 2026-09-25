@@ -314,7 +314,7 @@ Do not unnecessarily include every section if it does not help answer the questi
     try:
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[
                 {
                     "role": "system",
