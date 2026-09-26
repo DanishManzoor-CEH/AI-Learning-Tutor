@@ -1,16 +1,22 @@
 import streamlit as st
-from sentence_transformers import SentenceTransformer
+
+from sentence_transformers import (
+    SentenceTransformer,
+)
 
 
-EMBEDDING_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL_NAME = (
+    "sentence-transformers/all-MiniLM-L6-v2"
+)
 
 
 @st.cache_resource
 def load_embedding_model():
     """
-    Load and cache the Sentence Transformer embedding model.
+    Load and cache the embedding model.
 
-    The model is loaded once and reused across Streamlit reruns.
+    Streamlit will load the model once and reuse it
+    instead of downloading/loading it on every rerun.
     """
 
     model = SentenceTransformer(
