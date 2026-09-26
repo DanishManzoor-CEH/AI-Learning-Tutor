@@ -5,8 +5,8 @@ def build_rag_context(
     search_results: List[Dict],
 ) -> str:
     """
-    Convert retrieved FAISS results into context
-    that can be provided to the language model.
+    Convert retrieved search results into a structured
+    context block for the language model.
     """
 
     if not search_results:
@@ -34,19 +34,27 @@ def build_rag_context(
             "",
         )
 
+        similarity = result.get(
+            "similarity",
+            0.0,
+        )
+
         context_parts.append(
             f"""
 SOURCE {number}
 
 Document: {source}
 Page: {page}
+Similarity: {similarity:.3f}
 
 Content:
 {text}
 """
         )
 
-    return "\n".join(context_parts)
+    return "\n".join(
+        context_parts
+    )
 
 
 def build_rag_prompt(
@@ -57,64 +65,89 @@ def build_rag_prompt(
     response_length: str,
 ) -> str:
     """
-    Build the grounded prompt for the LLM.
+    Build a strict knowledge-grounded prompt.
+
+    The model is instructed NOT to answer from general
+    knowledge when the knowledge base does not contain
+    sufficient information.
     """
 
     return f"""
-You are an AI Learning Tutor specializing in cybersecurity education.
+You are an AI Learning Tutor for cybersecurity education.
 
-The student asked:
+Your task is to answer the student's question using ONLY
+the information contained in the provided cybersecurity
+knowledge base.
 
+STUDENT QUESTION:
 {question}
 
-Student level:
+STUDENT LEVEL:
 {student_level}
 
-Learning mode:
+LEARNING MODE:
 {learning_mode}
 
-Preferred response length:
+RESPONSE LENGTH:
 {response_length}
-
-You have been provided with information retrieved from
-the cybersecurity learning knowledge base.
 
 ================ KNOWLEDGE BASE =================
 
 {context}
 
-===================================================
+====================================================
 
-IMPORTANT GROUNDING RULES:
+STRICT GROUNDING RULES:
 
-1. Use the provided knowledge base as the primary source
-   for factual claims.
+1. Use the retrieved knowledge-base content as the
+   authoritative source for your answer.
 
-2. Do not claim that information came from the knowledge
-   base unless it is actually supported by the retrieved
-   content.
+2. Do NOT use your general world knowledge to answer
+   information that is not supported by the retrieved
+   knowledge-base content.
 
-3. Do not invent citations, document names, or page numbers.
+3. If the student's question is unrelated to cybersecurity
+   or is not supported by the retrieved knowledge base,
+   clearly say:
 
-4. If the knowledge base does not contain enough information
-   to answer the question, clearly say that the available
-   learning material does not contain sufficient information.
+   "I couldn't find sufficient information about this
+   question in the current cybersecurity learning
+   knowledge base."
 
-5. You may provide a small amount of general explanation
-   when useful, but clearly distinguish it from information
-   supported by the retrieved material.
+4. Do NOT guess.
 
-6. Never fabricate facts to make the answer appear complete.
+5. Do NOT fabricate facts.
 
-7. Adapt the explanation to the student's level.
+6. Do NOT fabricate citations.
 
-8. For cybersecurity topics, keep the explanation educational,
-   defensive, and responsible.
+7. Do NOT invent document names.
 
-9. At the end, provide a "Sources" section containing only
-   the documents and pages that were actually used.
+8. Do NOT invent page numbers.
 
-10. If a source was not useful for the answer, do not cite it.
+9. Only mention a source when the retrieved content from
+   that source actually supports the answer.
 
-Answer the student's question now.
+10. If multiple sources support the answer, mention only
+    the relevant sources.
+
+11. Adapt the explanation to the student's level.
+
+12. Keep cybersecurity explanations educational,
+    responsible, and defensive.
+
+13. If the knowledge base is insufficient, do not try to
+    make the answer look complete.
+
+14. The source information is included below. Use it
+    carefully and faithfully.
+
+15. At the end of a supported answer, provide:
+
+    Sources:
+    - Document name — Page X
+
+16. If the knowledge base does not support the answer,
+    do NOT provide a Sources section.
+
+Answer the student now.
 """
