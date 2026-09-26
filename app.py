@@ -6,16 +6,21 @@ from src.document_loader import (
     get_document_statistics,
 )
 
-from src.text_chunker import chunk_documents
+from src.text_chunker import (
+    chunk_documents,
+)
 
 from src.vector_store import (
     build_vector_store,
     search_vector_store,
 )
+
 from src.rag_pipeline import (
     build_rag_context,
     build_rag_prompt,
 )
+
+
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
@@ -34,24 +39,26 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+
     .main-title {
-        font-size: 42px;
+        font-size: 2.4rem;
         font-weight: 700;
-        margin-bottom: 5px;
+        margin-bottom: 0.2rem;
     }
 
     .subtitle {
-        font-size: 18px;
+        font-size: 1.05rem;
         color: #666666;
-        margin-bottom: 25px;
+        margin-bottom: 1.5rem;
     }
 
-    .source-box {
-        padding: 12px;
-        border-radius: 8px;
-        background-color: #f5f7fa;
-        margin-top: 10px;
+    .research-box {
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid #dddddd;
+        background-color: #f8f9fa;
     }
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -68,9 +75,11 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle">'
-    "A responsible AI tutor for cybersecurity learning"
-    "</div>",
+    """
+    <div class="subtitle">
+    RAG-Based Responsible AI Tutor for Cybersecurity Learning
+    </div>
+    """,
     unsafe_allow_html=True,
 )
 
@@ -80,25 +89,39 @@ st.markdown(
 # ============================================================
 
 try:
-    groq_api_key = st.secrets["GROQ_API_KEY"]
+
+    groq_api_key = st.secrets[
+        "GROQ_API_KEY"
+    ]
+
 except Exception:
+
     st.error(
-        "GROQ_API_KEY is not configured. "
-        "Please add it to Streamlit Cloud Secrets."
+        "GROQ_API_KEY is not configured."
     )
+
+    st.info(
+        "Please add GROQ_API_KEY to "
+        "Streamlit Cloud → Settings → Secrets."
+    )
+
     st.stop()
 
 
-client = Groq(api_key=groq_api_key)
+client = Groq(
+    api_key=groq_api_key
+)
 
 
 # ============================================================
-# SIDEBAR - LEARNING SETTINGS
+# SIDEBAR
 # ============================================================
 
 with st.sidebar:
 
-    st.header("⚙️ Learning Settings")
+    st.header(
+        "⚙️ Learning Settings"
+    )
 
     student_level = st.selectbox(
         "Student Level",
@@ -131,58 +154,74 @@ with st.sidebar:
         index=1,
     )
 
+    st.divider()
 
-# ============================================================
-# SIDEBAR - KNOWLEDGE BASE
-# ============================================================
-
-st.sidebar.divider()
-
-st.sidebar.subheader("📚 Knowledge Base")
-
-stats = get_document_statistics()
-
-st.sidebar.write(
-    f"📄 PDFs: {stats['pdf_count']}"
-)
-
-st.sidebar.write(
-    f"📑 Pages loaded: {stats['page_count']}"
-)
-
-if stats["documents"]:
-
-    st.sidebar.success(
-        "Knowledge base available"
-    )
-
-    with st.sidebar.expander(
-        "View documents"
-    ):
-
-        for document in stats["documents"]:
-
-            st.write(
-                f"• {document}"
-            )
-
-else:
-
-    st.sidebar.warning(
-        "No PDF documents found."
+    st.header(
+        "📚 Knowledge Base"
     )
 
 
 # ============================================================
-# LOAD KNOWLEDGE BASE DOCUMENTS
+# LOAD DOCUMENTS
 # ============================================================
 
 documents = load_pdf_documents()
+
+
+# ============================================================
+# DOCUMENT STATISTICS
+# ============================================================
+
+statistics = get_document_statistics()
+
+
+with st.sidebar:
+
+    st.metric(
+        "PDF Documents",
+        statistics["pdf_count"],
+    )
+
+    st.metric(
+        "Indexed Pages",
+        statistics["page_count"],
+    )
+
+    if statistics["documents"]:
+
+        st.caption(
+            "Available documents:"
+        )
+
+        for document_name in statistics[
+            "documents"
+        ]:
+
+            st.caption(
+                f"📄 {document_name}"
+            )
+
+    else:
+
+        st.warning(
+            "No PDF documents found."
+        )
+
+
+# ============================================================
+# CREATE CHUNKS
+# ============================================================
+
 chunks = chunk_documents(
     documents,
     chunk_size=800,
     chunk_overlap=150,
 )
+
+
+# ============================================================
+# BUILD VECTOR STORE
+# ============================================================
 
 vector_index = None
 
@@ -190,8 +229,11 @@ if chunks:
 
     try:
 
-        vector_index, chunk_metadata = build_vector_store(
-            chunks
+        # Tuple is used so Streamlit can cache
+        # the vector store reliably.
+
+        vector_index = build_vector_store(
+            tuple(chunks)
         )
 
     except Exception as error:
@@ -204,109 +246,43 @@ if chunks:
             str(error)
         )
 
-        chunk_metadata = []
-
 else:
 
-    chunk_metadata = []
+    st.warning(
+        "No usable text was extracted from the PDFs."
+    )
+
 
 # ============================================================
 # SYSTEM PROMPT
 # ============================================================
 
-SYSTEM_PROMPT = f"""
-You are an AI Learning Tutor specializing in cybersecurity education.
+SYSTEM_PROMPT = """
+You are an educational AI tutor specializing in
+cybersecurity.
 
-Your purpose is to help students understand cybersecurity concepts clearly,
-accurately, and responsibly.
+Your role is to help students understand cybersecurity
+concepts clearly and responsibly.
 
-Student level:
-{student_level}
+Important principles:
 
-Learning mode:
-{learning_mode}
-
-Response length:
-{response_length}
-
-Teaching principles:
-
-1. Explain concepts accurately.
-2. Adapt explanations to the student's level.
-3. Use simple examples when appropriate.
-4. Explain technical terminology.
-5. Encourage understanding rather than memorization.
-6. Ask a short follow-up question when useful.
-7. Never intentionally provide false information.
-8. If you are uncertain about a factual claim, clearly indicate uncertainty.
-9. For cybersecurity topics, keep explanations educational and defensive.
-10. Do not claim that information came from a source unless it actually did.
+- Be accurate.
+- Be educational.
+- Avoid unnecessary jargon.
+- Adapt explanations to the student's level.
+- Encourage understanding rather than memorization.
+- Do not fabricate information.
+- Respect the retrieved knowledge-base evidence.
+- Do not claim that information came from a source unless
+  that source actually supports the statement.
+- If the knowledge base does not contain enough information,
+  clearly communicate that limitation.
+- For cybersecurity topics, remain defensive and educational.
 """
 
 
 # ============================================================
-# RESPONSE LENGTH INSTRUCTIONS
-# ============================================================
-
-if response_length == "Short":
-
-    length_instruction = """
-Keep the answer concise.
-Use a short explanation and one simple example when useful.
-"""
-
-elif response_length == "Detailed":
-
-    length_instruction = """
-Provide a detailed explanation.
-Use headings, examples, technical details, and practical context where useful.
-"""
-
-else:
-
-    length_instruction = """
-Provide a balanced explanation.
-Explain the main concept clearly and include a useful example.
-"""
-
-
-# ============================================================
-# LEARNING MODE INSTRUCTIONS
-# ============================================================
-
-if learning_mode == "Simple Explanation":
-
-    mode_instruction = """
-Use very simple language.
-Explain difficult technical terms in plain language.
-Assume the student is still developing their fundamentals.
-"""
-
-elif learning_mode == "Technical Explanation":
-
-    mode_instruction = """
-Provide a technically detailed explanation.
-Include relevant protocols, mechanisms, components, and security considerations.
-"""
-
-elif learning_mode == "Socratic Learning":
-
-    mode_instruction = """
-Teach using a Socratic approach.
-Instead of immediately giving every detail, guide the student with questions
-and hints that encourage them to reason about the concept.
-"""
-
-else:
-
-    mode_instruction = """
-Explain the concept directly and clearly.
-Use examples when they improve understanding.
-"""
-
-
-# ============================================================
-# AI RESPONSE FUNCTION
+# GENERATE RAG RESPONSE
 # ============================================================
 
 def generate_tutor_response(
@@ -317,60 +293,54 @@ def generate_tutor_response(
     search_results,
 ):
     """
-    Generate a grounded AI tutor response using
-    retrieved knowledge-base content.
+    Generate a response using retrieved knowledge-base
+    content.
+
+    If there are no sufficiently relevant search results,
+    the model is explicitly prevented from answering from
+    general knowledge.
     """
 
-    if search_results:
+    # --------------------------------------------------------
+    # NO RELEVANT KNOWLEDGE
+    # --------------------------------------------------------
 
-        context = build_rag_context(
-            search_results
+    if not search_results:
+
+        return (
+            "I couldn't find sufficient information about "
+            "this question in the current cybersecurity "
+            "learning knowledge base.\n\n"
+            "Please ask a question related to the "
+            "cybersecurity topics covered by the uploaded "
+            "learning materials."
         )
 
-        prompt = build_rag_prompt(
-            question=question,
-            context=context,
-            student_level=student_level,
-            learning_mode=learning_mode,
-            response_length=response_length,
-        )
+    # --------------------------------------------------------
+    # BUILD RAG CONTEXT
+    # --------------------------------------------------------
 
-    else:
+    context = build_rag_context(
+        search_results
+    )
 
-        prompt = f"""
-You are an AI Learning Tutor specializing in cybersecurity education.
+    prompt = build_rag_prompt(
+        question=question,
+        context=context,
+        student_level=student_level,
+        learning_mode=learning_mode,
+        response_length=response_length,
+    )
 
-The student asked:
-
-{question}
-
-Student level:
-{student_level}
-
-Learning mode:
-{learning_mode}
-
-Response length:
-{response_length}
-
-The cybersecurity knowledge base did not return
-sufficient relevant information for this question.
-
-Clearly tell the student that the available learning
-materials do not contain sufficient information to answer
-the question confidently.
-
-Do not pretend that information came from the knowledge base.
-
-You may provide a brief general explanation if appropriate,
-but clearly state that it is general model knowledge and
-not supported by the current learning materials.
-"""
+    # --------------------------------------------------------
+    # CALL GROQ
+    # --------------------------------------------------------
 
     try:
 
         response = client.chat.completions.create(
             model="openai/gpt-oss-120b",
+
             messages=[
                 {
                     "role": "system",
@@ -381,167 +351,90 @@ not supported by the current learning materials.
                     "content": prompt,
                 },
             ],
+
             temperature=0.2,
+
             max_tokens=1800,
         )
 
-        return response.choices[0].message.content
+        return response.choices[
+            0
+        ].message.content
 
     except Exception as error:
 
         return (
             "⚠️ An error occurred while generating "
-            "the response.\n\n"
+            "the tutor response.\n\n"
             f"Error: {error}"
         )
 
+
 # ============================================================
-# MAIN KNOWLEDGE BASE INFORMATION
+# KNOWLEDGE BASE INFORMATION
 # ============================================================
 
-st.divider()
+st.subheader(
+    "📚 Cybersecurity Knowledge Base"
+)
 
-st.subheader("📚 Cybersecurity Knowledge Base")
+col1, col2, col3 = st.columns(3)
 
-if documents:
+with col1:
 
-    st.write(
-        f"The tutor currently has access to "
-        f"**{len(documents)} PDF pages**."
+    st.metric(
+        "PDF Documents",
+        statistics["pdf_count"],
     )
 
-    with st.expander(
-        "🔎 View loaded knowledge sources"
-    ):
+with col2:
 
-        for document in documents:
+    st.metric(
+        "Pages",
+        statistics["page_count"],
+    )
 
-            source = document.get(
-                "source",
-                "Unknown source",
-            )
+with col3:
 
-            page = document.get(
-                "page",
-                "Unknown page",
-            )
+    st.metric(
+        "Text Chunks",
+        len(chunks),
+    )
 
-            st.write(
-                f"📄 **{source}** — Page {page}"
-            )
 
-else:
+if not documents:
 
     st.info(
-        "No PDF documents are currently available. "
-        "Add cybersecurity PDFs to `data/documents/`."
+        """
+        No cybersecurity PDF documents are currently
+        available.
+
+        Add trusted cybersecurity learning material to:
+
+        `data/documents/`
+        """
     )
 
 
 # ============================================================
-# ASK YOUR AI TUTOR
+# ASK AI TUTOR
 # ============================================================
-
-st.divider()
-
-st.subheader("💬 Ask Your AI Tutor")
-
-question = st.text_area(
-    "What would you like to learn?",
-    placeholder=(
-        "For example: What is cybersecurity? "
-        "Explain the TCP three-way handshake."
-    ),
-    height=120,
-)
 
 st.divider()
 
 st.subheader(
-    "🔎 Test Knowledge Base Search"
+    "🤖 Ask Your AI Tutor"
 )
 
-search_query = st.text_input(
-    "Test a search against your cybersecurity PDFs",
-    placeholder="Example: What is DNS?",
+question = st.text_area(
+    "Enter your cybersecurity question",
+    placeholder=(
+        "Example: What is DNS and what role does it "
+        "play in computer networks?"
+    ),
+    height=120,
 )
 
-search_button = st.button(
-    "🔍 Search Knowledge Base"
-)
-
-if search_button:
-
-    if not search_query.strip():
-
-        st.warning(
-            "Please enter a search question."
-        )
-
-    elif vector_index is None:
-
-        st.warning(
-            "The knowledge base is not available."
-        )
-
-    else:
-
-        with st.spinner(
-            "Searching the knowledge base..."
-        ):
-
-            search_results = search_vector_store(
-                vector_index,
-                chunk_metadata,
-                search_query,
-                top_k=4,
-            )
-
-        if not search_results:
-
-            st.info(
-                "No relevant information was found."
-            )
-
-        else:
-
-            st.success(
-                f"Found {len(search_results)} relevant chunks."
-            )
-
-            for number, result in enumerate(
-                search_results,
-                start=1,
-            ):
-
-                st.markdown(
-                    f"### Result {number}"
-                )
-
-                st.write(
-                    f"📄 **Source:** "
-                    f"{result['source']}"
-                )
-
-                st.write(
-                    f"📑 **Page:** "
-                    f"{result['page']}"
-                )
-
-                st.write(
-                    f"🎯 **Similarity:** "
-                    f"{result['similarity']:.3f}"
-                )
-
-                st.write(
-                    result["text"]
-                )
-
-                st.divider()
-                
-# ============================================================
-# ASK BUTTON
-# ============================================================
 
 ask_button = st.button(
     "🚀 Ask AI Tutor",
@@ -550,7 +443,7 @@ ask_button = st.button(
 
 
 # ============================================================
-# PROCESS QUESTION
+# ASK BUTTON
 # ============================================================
 
 if ask_button:
@@ -570,23 +463,44 @@ if ask_button:
 
     else:
 
+        # ----------------------------------------------------
+        # RETRIEVAL
+        # ----------------------------------------------------
+
         with st.spinner(
-            "🔎 Searching the knowledge base..."
+            "🔎 Searching the cybersecurity knowledge base..."
         ):
 
             search_results = search_vector_store(
                 vector_index,
-                chunk_metadata,
+                chunks,
                 question,
                 top_k=4,
             )
 
+        # ----------------------------------------------------
+        # NO RELEVANT RESULTS
+        # ----------------------------------------------------
+
         if not search_results:
 
             st.warning(
-                "No relevant information was found "
-                "in the knowledge base."
+                """
+                I couldn't find sufficient information
+                about this question in the current
+                cybersecurity knowledge base.
+                """
             )
+
+            st.caption(
+                "The tutor does not answer from general "
+                "knowledge when the knowledge base does "
+                "not contain sufficiently relevant evidence."
+            )
+
+        # ----------------------------------------------------
+        # RELEVANT RESULTS FOUND
+        # ----------------------------------------------------
 
         else:
 
@@ -602,16 +516,31 @@ if ask_button:
                     search_results=search_results,
                 )
 
+            # ------------------------------------------------
+            # RESPONSE
+            # ------------------------------------------------
+
             st.subheader(
                 "🤖 Tutor Response"
             )
 
-            st.markdown(answer)
+            st.markdown(
+                answer
+            )
+
+            # ------------------------------------------------
+            # RETRIEVED SOURCES
+            # ------------------------------------------------
 
             st.divider()
 
             st.subheader(
-                "📚 Retrieved Sources"
+                "📚 Retrieved Evidence"
+            )
+
+            st.caption(
+                "These are the knowledge-base passages "
+                "retrieved for this question."
             )
 
             for number, result in enumerate(
@@ -619,16 +548,30 @@ if ask_button:
                 start=1,
             ):
 
-                st.markdown(
-                    f"**Source {number}:** "
+                with st.expander(
+                    f"Source {number}: "
                     f"{result['source']} "
                     f"— Page {result['page']}"
-                )
+                ):
 
-                st.caption(
-                    f"Semantic similarity: "
-                    f"{result['similarity']:.3f}"
-                )
+                    st.write(
+                        f"**Document:** "
+                        f"{result['source']}"
+                    )
+
+                    st.write(
+                        f"**Page:** "
+                        f"{result['page']}"
+                    )
+
+                    st.write(
+                        f"**Similarity:** "
+                        f"{result['similarity']:.3f}"
+                    )
+
+                    st.write(
+                        result["text"]
+                    )
 
 
 # ============================================================
@@ -637,47 +580,38 @@ if ask_button:
 
 st.divider()
 
-with st.expander(
-    "🔬 About this Research Project"
-):
+st.subheader(
+    "🔬 Research Project"
+)
 
-    st.write(
-        """
-        This project explores how Large Language Models and
-        Retrieval-Augmented Generation can support cybersecurity education.
+st.markdown(
+    """
+    <div class="research-box">
 
-        The research direction focuses on:
+    <strong>Research Question:</strong><br>
 
-        • Educational AI
-        • Large Language Models
-        • Retrieval-Augmented Generation (RAG)
-        • Source-grounded answers
-        • Responsible AI
-        • Hallucination reduction
-        • Adaptive learning
-        • Student feedback
-        • Cybersecurity education
-        """
-    )
+    How can Retrieval-Augmented Generation improve the
+    factual accuracy, source-groundedness, and
+    learning-support quality of an LLM-based cybersecurity
+    tutoring system?
 
-    st.markdown(
-        """
-        **Planned research question:**
+    <br><br>
 
-        How can Retrieval-Augmented Generation improve the factual
-        accuracy, source-groundedness, and learning-support quality
-        of an LLM-based cybersecurity tutoring system?
-        """
-    )
+    <strong>Current Architecture:</strong>
 
+    <br><br>
 
-# ============================================================
-# FOOTER
-# ============================================================
+    Student Question → Embedding → FAISS Retrieval →
+    Relevant Cybersecurity Chunks → GPT-OSS →
+    Grounded Tutor Response
 
-st.divider()
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 st.caption(
-    "AI Learning Tutor | RAG-Based Responsible AI Tutor "
-    "for Cybersecurity Learning"
+    "AI Learning Tutor — RAG-based responsible AI "
+    "education research project."
 )
