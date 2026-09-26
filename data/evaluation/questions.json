@@ -1,0 +1,148 @@
+[
+    {
+        "id": "Q001",
+        "question": "What is DNS?",
+        "expected_keywords": [
+            "domain",
+            "name",
+            "system",
+            "IP",
+            "address"
+        ],
+        "reference_answer": "DNS stands for Domain Name System. It translates human-readable domain names into IP addresses so that devices can locate services on a network.",
+        "expected_topics": [
+            "DNS"
+        ]
+    },
+    {
+        "id": "Q002",
+        "question": "What is a firewall?",
+        "expected_keywords": [
+            "firewall",
+            "network",
+            "traffic",
+            "rules",
+            "security"
+        ],
+        "reference_answer": "A firewall is a security mechanism that monitors and controls network traffic according to defined security rules.",
+        "expected_topics": [
+            "firewall"
+        ]
+    },
+    {
+        "id": "Q003",
+        "question": "What is TCP?",
+        "expected_keywords": [
+            "TCP",
+            "connection",
+            "reliable",
+            "data",
+            "transport"
+        ],
+        "reference_answer": "TCP is a transport-layer protocol that provides reliable, connection-oriented delivery of data between networked devices.",
+        "expected_topics": [
+            "TCP"
+        ]
+    },
+    {
+        "id": "Q004",
+        "question": "What is an IP address?",
+        "expected_keywords": [
+            "IP",
+            "address",
+            "device",
+            "network",
+            "identify"
+        ],
+        "reference_answer": "An IP address is a numerical address used to identify a device or network interface and enable communication across an IP network.",
+        "expected_topics": [
+            "IP address"
+        ]
+    },
+    {
+        "id": "Q005",
+        "question": "What is HTTPS?",
+        "expected_keywords": [
+            "HTTPS",
+            "HTTP",
+            "TLS",
+            "encryption",
+            "secure"
+        ],
+        "reference_answer": "HTTPS is HTTP protected by TLS. It helps provide confidentiality and integrity for data exchanged between a client and a web server.",
+        "expected_topics": [
+            "HTTPS"
+        ]
+    },
+    {
+        "id": "Q006",
+        "question": "What is a VPN?",
+        "expected_keywords": [
+            "VPN",
+            "network",
+            "encrypted",
+            "connection",
+            "secure"
+        ],
+        "reference_answer": "A VPN creates a protected connection over a network and can encrypt traffic between the user and the VPN endpoint.",
+        "expected_topics": [
+            "VPN"
+        ]
+    },
+    {
+        "id": "Q007",
+        "question": "What is a cybersecurity threat?",
+        "expected_keywords": [
+            "threat",
+            "security",
+            "attack",
+            "system",
+            "risk"
+        ],
+        "reference_answer": "A cybersecurity threat is a potential event, actor, or circumstance that can exploit a weakness and negatively affect the confidentiality, integrity, or availability of systems or data.",
+        "expected_topics": [
+            "cybersecurity"
+        ]
+    },
+    {
+        "id": "Q008",
+        "question": "What is network security?",
+        "expected_keywords": [
+            "network",
+            "security",
+            "protect",
+            "systems",
+            "data"
+        ],
+        "reference_answer": "Network security involves technologies, controls, and practices used to protect networks, systems, and data from unauthorized access and attacks.",
+        "expected_topics": [
+            "network security"
+        ]
+    },
+    {
+        "id": "Q009",
+        "question": "What is malware?",
+        "expected_keywords": [
+            "malware",
+            "software",
+            "malicious",
+            "system",
+            "attack"
+        ],
+        "reference_answer": "Malware is malicious software designed to disrupt, damage, gain unauthorized access to, or otherwise compromise systems or data.",
+        "expected_topics": [
+            "malware"
+        ]
+    },
+    {
+        "id": "Q010",
+        "question": "What is the largest city in Pakistan?",
+        "expected_keywords": [
+            "Karachi"
+        ],
+        "reference_answer": "The question is outside the cybersecurity knowledge domain used by this evaluation.",
+        "expected_topics": [
+            "out_of_scope"
+        ]
+    }
+]
