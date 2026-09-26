@@ -6,6 +6,12 @@ from src.document_loader import (
     get_document_statistics,
 )
 
+from src.text_chunker import chunk_documents
+
+from src.vector_store import (
+    build_vector_store,
+    search_vector_store,
+)
 
 # ============================================================
 # PAGE CONFIGURATION
@@ -169,7 +175,37 @@ else:
 # ============================================================
 
 documents = load_pdf_documents()
+chunks = chunk_documents(
+    documents,
+    chunk_size=800,
+    chunk_overlap=150,
+)
 
+vector_index = None
+
+if chunks:
+
+    try:
+
+        vector_index, chunk_metadata = build_vector_store(
+            chunks
+        )
+
+    except Exception as error:
+
+        st.error(
+            "Could not build the knowledge base."
+        )
+
+        st.error(
+            str(error)
+        )
+
+        chunk_metadata = []
+
+else:
+
+    chunk_metadata = []
 
 # ============================================================
 # SYSTEM PROMPT
@@ -399,7 +435,90 @@ question = st.text_area(
     height=120,
 )
 
+st.divider()
 
+st.subheader(
+    "🔎 Test Knowledge Base Search"
+)
+
+search_query = st.text_input(
+    "Test a search against your cybersecurity PDFs",
+    placeholder="Example: What is DNS?",
+)
+
+search_button = st.button(
+    "🔍 Search Knowledge Base"
+)
+
+if search_button:
+
+    if not search_query.strip():
+
+        st.warning(
+            "Please enter a search question."
+        )
+
+    elif vector_index is None:
+
+        st.warning(
+            "The knowledge base is not available."
+        )
+
+    else:
+
+        with st.spinner(
+            "Searching the knowledge base..."
+        ):
+
+            search_results = search_vector_store(
+                vector_index,
+                chunk_metadata,
+                search_query,
+                top_k=4,
+            )
+
+        if not search_results:
+
+            st.info(
+                "No relevant information was found."
+            )
+
+        else:
+
+            st.success(
+                f"Found {len(search_results)} relevant chunks."
+            )
+
+            for number, result in enumerate(
+                search_results,
+                start=1,
+            ):
+
+                st.markdown(
+                    f"### Result {number}"
+                )
+
+                st.write(
+                    f"📄 **Source:** "
+                    f"{result['source']}"
+                )
+
+                st.write(
+                    f"📑 **Page:** "
+                    f"{result['page']}"
+                )
+
+                st.write(
+                    f"🎯 **Similarity:** "
+                    f"{result['similarity']:.3f}"
+                )
+
+                st.write(
+                    result["text"]
+                )
+
+                st.divider()
+                
 # ============================================================
 # ASK BUTTON
 # ============================================================
