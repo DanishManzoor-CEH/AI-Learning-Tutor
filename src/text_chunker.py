@@ -9,19 +9,27 @@ def chunk_documents(
     """
     Split page-level documents into smaller overlapping chunks.
 
-    Each chunk keeps its original source and page metadata.
+    Each chunk keeps:
+    - original text
+    - source filename
+    - page number
+    - unique chunk ID
     """
 
     chunks = []
 
     if chunk_overlap >= chunk_size:
+
         raise ValueError(
             "chunk_overlap must be smaller than chunk_size."
         )
 
     for document in documents:
 
-        text = document.get("text", "").strip()
+        text = document.get(
+            "text",
+            "",
+        ).strip()
 
         if not text:
             continue
@@ -46,7 +54,9 @@ def chunk_documents(
                 text_length,
             )
 
-            chunk_text = text[start:end].strip()
+            chunk_text = text[
+                start:end
+            ].strip()
 
             if chunk_text:
 
