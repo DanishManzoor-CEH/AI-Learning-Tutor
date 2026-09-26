@@ -12,7 +12,10 @@ from src.vector_store import (
     build_vector_store,
     search_vector_store,
 )
-
+from src.rag_pipeline import (
+    build_rag_context,
+    build_rag_prompt,
+)
 # ============================================================
 # PAGE CONFIGURATION
 # ============================================================
@@ -311,13 +314,33 @@ def generate_tutor_response(
     student_level,
     learning_mode,
     response_length,
+    search_results,
 ):
     """
-    Generate an educational response using Groq.
+    Generate a grounded AI tutor response using
+    retrieved knowledge-base content.
     """
 
-    prompt = f"""
-Student question:
+    if search_results:
+
+        context = build_rag_context(
+            search_results
+        )
+
+        prompt = build_rag_prompt(
+            question=question,
+            context=context,
+            student_level=student_level,
+            learning_mode=learning_mode,
+            response_length=response_length,
+        )
+
+    else:
+
+        prompt = f"""
+You are an AI Learning Tutor specializing in cybersecurity education.
+
+The student asked:
 
 {question}
 
@@ -330,21 +353,18 @@ Learning mode:
 Response length:
 {response_length}
 
-{length_instruction}
+The cybersecurity knowledge base did not return
+sufficient relevant information for this question.
 
-{mode_instruction}
+Clearly tell the student that the available learning
+materials do not contain sufficient information to answer
+the question confidently.
 
-Please answer the student's question as an educational cybersecurity tutor.
+Do not pretend that information came from the knowledge base.
 
-When appropriate, structure the answer using:
-
-- Explanation
-- Key Points
-- Example
-- Security Relevance
-- Quick Check
-
-Do not unnecessarily include every section if it does not help answer the question.
+You may provide a brief general explanation if appropriate,
+but clearly state that it is general model knowledge and
+not supported by the current learning materials.
 """
 
     try:
@@ -361,8 +381,8 @@ Do not unnecessarily include every section if it does not help answer the questi
                     "content": prompt,
                 },
             ],
-            temperature=0.3,
-            max_tokens=1500,
+            temperature=0.2,
+            max_tokens=1800,
         )
 
         return response.choices[0].message.content
@@ -370,10 +390,10 @@ Do not unnecessarily include every section if it does not help answer the questi
     except Exception as error:
 
         return (
-            "⚠️ An error occurred while generating the response.\n\n"
+            "⚠️ An error occurred while generating "
+            "the response.\n\n"
             f"Error: {error}"
         )
-
 
 # ============================================================
 # MAIN KNOWLEDGE BASE INFORMATION
@@ -541,22 +561,74 @@ if ask_button:
             "Please enter a question first."
         )
 
+    elif vector_index is None:
+
+        st.warning(
+            "The cybersecurity knowledge base "
+            "is not available yet."
+        )
+
     else:
 
         with st.spinner(
-            "🧠 Your AI Tutor is preparing an answer..."
+            "🔎 Searching the knowledge base..."
         ):
 
-            answer = generate_tutor_response(
-                question=question,
-                student_level=student_level,
-                learning_mode=learning_mode,
-                response_length=response_length,
+            search_results = search_vector_store(
+                vector_index,
+                chunk_metadata,
+                question,
+                top_k=4,
             )
 
-        st.subheader("🤖 Tutor Response")
+        if not search_results:
 
-        st.markdown(answer)
+            st.warning(
+                "No relevant information was found "
+                "in the knowledge base."
+            )
+
+        else:
+
+            with st.spinner(
+                "🧠 Generating a grounded tutor response..."
+            ):
+
+                answer = generate_tutor_response(
+                    question=question,
+                    student_level=student_level,
+                    learning_mode=learning_mode,
+                    response_length=response_length,
+                    search_results=search_results,
+                )
+
+            st.subheader(
+                "🤖 Tutor Response"
+            )
+
+            st.markdown(answer)
+
+            st.divider()
+
+            st.subheader(
+                "📚 Retrieved Sources"
+            )
+
+            for number, result in enumerate(
+                search_results,
+                start=1,
+            ):
+
+                st.markdown(
+                    f"**Source {number}:** "
+                    f"{result['source']} "
+                    f"— Page {result['page']}"
+                )
+
+                st.caption(
+                    f"Semantic similarity: "
+                    f"{result['similarity']:.3f}"
+                )
 
 
 # ============================================================
