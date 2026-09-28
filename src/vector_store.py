@@ -2,45 +2,36 @@ from typing import List, Dict, Tuple
 
 import faiss
 import numpy as np
-import streamlit as st
 
 from src.embeddings import create_embeddings
 
 
-# Initial threshold for Phase 2.
-#
-# Because embeddings are normalized and FAISS uses
-# inner-product similarity, the score is approximately
-# cosine similarity.
-#
-# This value can later be calibrated using the evaluation set.
-DEFAULT_SIMILARITY_THRESHOLD = 0.45
-
-
-@st.cache_resource
 def build_vector_store(
-    chunks: Tuple[Dict, ...],
-):
+    chunks: List[Dict],
+) -> Tuple[faiss.IndexFlatIP, List[Dict]]:
     """
-    Build and cache a FAISS vector index.
+    Build a FAISS vector index from document chunks.
 
-    The index is cached so Streamlit does not rebuild
-    the embeddings every time the user asks a question.
+    Returns:
+        vector_index:
+            FAISS similarity-search index.
+
+        chunk_metadata:
+            The original chunk dictionaries containing
+            text, source, page, and chunk_id.
     """
 
-    chunks_list = list(chunks)
-
-    if not chunks_list:
-
+    if not chunks:
         raise ValueError(
             "No document chunks were provided."
         )
 
     texts = [
         chunk["text"]
-        for chunk in chunks_list
+        for chunk in chunks
     ]
 
+    # Create normalized embeddings
     embeddings = create_embeddings(
         texts
     )
@@ -50,17 +41,33 @@ def build_vector_store(
         dtype="float32",
     )
 
+    if embeddings.ndim != 2:
+        raise ValueError(
+            "Embeddings must be a 2-dimensional array."
+        )
+
+    if embeddings.shape[0] != len(chunks):
+        raise ValueError(
+            "Number of embeddings does not match "
+            "number of document chunks."
+        )
+
     dimension = embeddings.shape[1]
 
-    index = faiss.IndexFlatIP(
+    # Inner Product works as cosine similarity
+    # because embeddings are normalized.
+    vector_index = faiss.IndexFlatIP(
         dimension
     )
 
-    index.add(
+    vector_index.add(
         embeddings
     )
 
-    return index
+    # IMPORTANT:
+    # Return BOTH the FAISS index and the
+    # corresponding chunk metadata.
+    return vector_index, chunks
 
 
 def search_vector_store(
@@ -68,16 +75,10 @@ def search_vector_store(
     chunks: List[Dict],
     query: str,
     top_k: int = 4,
-    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD,
 ) -> List[Dict]:
     """
-    Search the FAISS vector store.
-
-    Only results whose similarity score is equal to or
-    greater than the threshold are returned.
-
-    This prevents unrelated questions from being sent
-    to the LLM with irrelevant context.
+    Search the FAISS vector index and return
+    the most relevant document chunks.
     """
 
     if index is None:
@@ -118,19 +119,16 @@ def search_vector_store(
         if index_position < 0:
             continue
 
-        similarity = float(
-            score
-        )
-
-        # Reject weak/unrelated matches.
-        if similarity < similarity_threshold:
+        if index_position >= len(chunks):
             continue
 
         chunk = chunks[
             index_position
         ].copy()
 
-        chunk["similarity"] = similarity
+        chunk["similarity"] = float(
+            score
+        )
 
         results.append(
             chunk
