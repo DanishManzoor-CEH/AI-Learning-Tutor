@@ -152,9 +152,7 @@ def load_knowledge_base():
     # IMPORTANT:
     # build_vector_store returns BOTH the FAISS index
     # and the metadata list.
-    vector_index, chunk_metadata = (
-        build_vector_store(chunks)
-    )
+    vector_index, chunk_metadata = build_vector_store(chunks)
 
     return (
         vector_index,
