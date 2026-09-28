@@ -5,42 +5,53 @@ from typing import Dict, List
 
 
 # ============================================================
-# DATASET LOADING
+# EVALUATION DATASET
 # ============================================================
 
 def load_evaluation_questions(
     evaluation_file: str = "data/evaluation/questions.json",
 ) -> List[Dict]:
     """
-    Load evaluation questions from JSON.
+    Load the research evaluation dataset.
     """
 
-    path = Path(
-        evaluation_file
-    )
+    path = Path(evaluation_file)
 
     if not path.exists():
         return []
 
-    with open(
-        path,
-        "r",
-        encoding="utf-8",
-    ) as file:
+    try:
+        with open(
+            path,
+            "r",
+            encoding="utf-8",
+        ) as file:
 
-        return json.load(file)
+            data = json.load(file)
+
+        if not isinstance(data, list):
+            return []
+
+        return data
+
+    except (
+        json.JSONDecodeError,
+        OSError,
+    ):
+        return []
 
 
 # ============================================================
 # TEXT NORMALIZATION
 # ============================================================
 
-def normalize_text(
-    text: str,
-) -> str:
+def normalize_text(text: str) -> str:
     """
-    Normalize text for lightweight lexical evaluation.
+    Normalize text for simple lexical evaluation.
     """
+
+    if not text:
+        return ""
 
     text = text.lower()
 
@@ -68,8 +79,11 @@ def keyword_coverage(
     expected_keywords: List[str],
 ) -> float:
     """
-    Calculate the percentage of expected keywords
-    found in the generated answer.
+    Measure how many expected keywords appear
+    in the generated answer.
+
+    This is a lexical heuristic, not a semantic
+    correctness metric.
     """
 
     if not expected_keywords:
@@ -87,7 +101,10 @@ def keyword_coverage(
             keyword
         )
 
-        if normalized_keyword in normalized_answer:
+        if (
+            normalized_keyword
+            and normalized_keyword in normalized_answer
+        ):
             found += 1
 
     return found / len(
@@ -104,28 +121,24 @@ def token_f1_score(
     reference: str,
 ) -> float:
     """
-    Calculate token-level F1.
+    Calculate lexical token-level F1.
 
-    This is a lightweight lexical metric and does not
-    represent semantic correctness by itself.
+    This metric measures overlap between the generated
+    answer and the reference answer.
     """
 
     prediction_tokens = set(
-        normalize_text(
-            prediction
-        ).split()
+        normalize_text(prediction).split()
     )
 
     reference_tokens = set(
-        normalize_text(
-            reference
-        ).split()
+        normalize_text(reference).split()
     )
 
-    if not prediction_tokens:
-        return 0.0
-
-    if not reference_tokens:
+    if (
+        not prediction_tokens
+        or not reference_tokens
+    ):
         return 0.0
 
     common = (
@@ -153,15 +166,12 @@ def token_f1_score(
         2
         * precision
         * recall
-        / (
-            precision
-            + recall
-        )
+        / (precision + recall)
     )
 
 
 # ============================================================
-# GROUNDING HEURISTIC
+# GROUNDING SCORE
 # ============================================================
 
 def grounding_score(
@@ -169,29 +179,24 @@ def grounding_score(
     context: str,
 ) -> float:
     """
-    Estimate lexical overlap between answer and retrieved
-    context.
+    Estimate how much of the generated answer overlaps
+    lexically with retrieved context.
 
-    This is only a heuristic indicator. It is NOT a complete
-    factuality or hallucination metric.
+    This is a heuristic and does not prove factual grounding.
     """
 
     answer_tokens = set(
-        normalize_text(
-            answer
-        ).split()
+        normalize_text(answer).split()
     )
 
     context_tokens = set(
-        normalize_text(
-            context
-        ).split()
+        normalize_text(context).split()
     )
 
-    if not answer_tokens:
-        return 0.0
-
-    if not context_tokens:
+    if (
+        not answer_tokens
+        or not context_tokens
+    ):
         return 0.0
 
     overlap = (
@@ -213,12 +218,11 @@ def retrieval_success(
     search_results: List[Dict],
 ) -> bool:
     """
-    Determine whether relevant retrieval results exist.
+    Determine whether the retrieval system returned
+    at least one result.
     """
 
-    return bool(
-        search_results
-    )
+    return bool(search_results)
 
 
 # ============================================================
@@ -232,20 +236,18 @@ def calculate_average(
     if not values:
         return 0.0
 
-    return sum(values) / len(
-        values
-    )
+    return sum(values) / len(values)
 
 
 # ============================================================
-# AUTOMATIC SUMMARY
+# OVERALL EXPERIMENT SUMMARY
 # ============================================================
 
 def summarize_results(
     results: List[Dict],
 ) -> Dict:
     """
-    Calculate aggregate automatic evaluation statistics.
+    Calculate overall research metrics.
     """
 
     if not results:
@@ -261,9 +263,7 @@ def summarize_results(
         }
 
     return {
-        "total_questions": len(
-            results
-        ),
+        "total_questions": len(results),
 
         "baseline_keyword_coverage":
             calculate_average(
@@ -330,7 +330,155 @@ def summarize_results(
 
 
 # ============================================================
-# HUMAN EVALUATION SCORING
+# CATEGORY-LEVEL ANALYSIS
+# ============================================================
+
+def summarize_by_category(
+    results: List[Dict],
+) -> Dict[str, Dict]:
+    """
+    Calculate research metrics separately for each
+    evaluation category.
+    """
+
+    grouped = {}
+
+    for result in results:
+
+        category = result.get(
+            "category",
+            "Unknown",
+        )
+
+        if category not in grouped:
+            grouped[category] = []
+
+        grouped[category].append(
+            result
+        )
+
+    category_summary = {}
+
+    for category, category_results in grouped.items():
+
+        baseline_keyword = calculate_average(
+            [
+                result[
+                    "baseline_keyword_coverage"
+                ]
+                for result in category_results
+            ]
+        )
+
+        rag_keyword = calculate_average(
+            [
+                result[
+                    "rag_keyword_coverage"
+                ]
+                for result in category_results
+            ]
+        )
+
+        baseline_f1 = calculate_average(
+            [
+                result[
+                    "baseline_token_f1"
+                ]
+                for result in category_results
+            ]
+        )
+
+        rag_f1 = calculate_average(
+            [
+                result[
+                    "rag_token_f1"
+                ]
+                for result in category_results
+            ]
+        )
+
+        grounding = calculate_average(
+            [
+                result[
+                    "rag_grounding_score"
+                ]
+                for result in category_results
+            ]
+        )
+
+        retrieval = calculate_average(
+            [
+                1.0
+                if result[
+                    "retrieval_success"
+                ]
+                else 0.0
+                for result in category_results
+            ]
+        )
+
+        category_summary[category] = {
+            "questions": len(
+                category_results
+            ),
+            "baseline_keyword_coverage":
+                baseline_keyword,
+            "rag_keyword_coverage":
+                rag_keyword,
+            "keyword_improvement":
+                rag_keyword - baseline_keyword,
+            "baseline_token_f1":
+                baseline_f1,
+            "rag_token_f1":
+                rag_f1,
+            "token_f1_improvement":
+                rag_f1 - baseline_f1,
+            "rag_grounding_score":
+                grounding,
+            "retrieval_success_rate":
+                retrieval,
+        }
+
+    return category_summary
+
+
+# ============================================================
+# IMPROVEMENT CALCULATION
+# ============================================================
+
+def calculate_improvement(
+    baseline: float,
+    rag: float,
+) -> float:
+    """
+    Absolute improvement from baseline to RAG.
+    """
+
+    return rag - baseline
+
+
+def calculate_relative_improvement(
+    baseline: float,
+    rag: float,
+) -> float:
+    """
+    Relative improvement percentage.
+
+    Returns 0 when baseline is zero.
+    """
+
+    if baseline == 0:
+        return 0.0
+
+    return (
+        (rag - baseline)
+        / baseline
+        * 100
+    )
+
+
+# ============================================================
+# HUMAN EVALUATION
 # ============================================================
 
 HUMAN_EVALUATION_DIMENSIONS = [
@@ -346,16 +494,12 @@ HUMAN_EVALUATION_DIMENSIONS = [
 def calculate_human_evaluation_average(
     evaluation: Dict,
 ) -> float:
-    """
-    Calculate average human score across the six
-    evaluation dimensions.
-
-    Each dimension uses a 1–5 scale.
-    """
 
     values = []
 
-    for dimension in HUMAN_EVALUATION_DIMENSIONS:
+    for dimension in (
+        HUMAN_EVALUATION_DIMENSIONS
+    ):
 
         value = evaluation.get(
             dimension
@@ -365,6 +509,7 @@ def calculate_human_evaluation_average(
             continue
 
         try:
+
             values.append(
                 float(value)
             )
@@ -386,10 +531,6 @@ def calculate_human_evaluation_average(
 def calculate_interpretation(
     average_score: float,
 ) -> str:
-    """
-    Provide a neutral descriptive interpretation of
-    the average score.
-    """
 
     if average_score == 0:
         return "Not evaluated"
