@@ -31,6 +31,15 @@ from src.evaluator import (
     grounding_score,
     retrieval_success,
     summarize_results,
+    HUMAN_EVALUATION_DIMENSIONS,
+    calculate_human_evaluation_average,
+    calculate_interpretation,
+)
+
+from src.responsible_ai import (
+    detect_unsafe_request,
+    build_safe_response,
+    evaluate_responsible_ai,
 )
 
 
@@ -130,11 +139,10 @@ client = Groq(
 # ============================================================
 
 SYSTEM_PROMPT = """
-You are an educational AI tutor specializing in
-cybersecurity.
+You are an educational AI tutor specializing in cybersecurity.
 
 Your role is to help students understand cybersecurity
-concepts clearly and responsibly.
+concepts clearly, accurately, and responsibly.
 
 Important principles:
 
@@ -144,8 +152,9 @@ Important principles:
 - Encourage understanding.
 - Do not fabricate information.
 - Do not fabricate citations.
-- Clearly distinguish knowledge-base-supported
-  information from unsupported information.
+- Do not claim that unsupported information came from
+  the knowledge base.
+- Clearly communicate uncertainty when evidence is insufficient.
 - Remain defensive and responsible when discussing
   cybersecurity.
 """
@@ -203,7 +212,7 @@ statistics = get_document_statistics()
 
 
 # ============================================================
-# CREATE CHUNKS
+# CHUNK DOCUMENTS
 # ============================================================
 
 chunks = chunk_documents(
@@ -239,7 +248,7 @@ if chunks:
 
 
 # ============================================================
-# TUTOR RESPONSE — RAG
+# RAG RESPONSE
 # ============================================================
 
 def generate_rag_response(
@@ -250,7 +259,7 @@ def generate_rag_response(
     search_results,
 ):
     """
-    Generate a knowledge-grounded response.
+    Generate a grounded RAG response.
     """
 
     if not search_results:
@@ -307,7 +316,7 @@ def generate_rag_response(
 
 
 # ============================================================
-# TUTOR RESPONSE — BASELINE
+# BASELINE RESPONSE
 # ============================================================
 
 def generate_baseline_response(
@@ -317,18 +326,15 @@ def generate_baseline_response(
     response_length,
 ):
     """
-    Generate a baseline response using the same LLM
-    WITHOUT retrieval.
-
-    This provides a comparison condition for the research.
+    Generate an LLM-only baseline response.
     """
 
     prompt = f"""
 You are an AI Learning Tutor specializing in cybersecurity.
 
-Answer the following student question directly.
+Answer this student question using general model knowledge.
 
-Student question:
+Question:
 {question}
 
 Student level:
@@ -340,10 +346,7 @@ Learning mode:
 Response length:
 {response_length}
 
-Answer using your general model knowledge.
-
-Do not use or mention a cybersecurity PDF knowledge base.
-
+Do not use a document knowledge base.
 Do not fabricate citations.
 """
 
@@ -381,7 +384,7 @@ Do not fabricate citations.
 
 
 # ============================================================
-# SIDEBAR KNOWLEDGE BASE STATUS
+# SIDEBAR KNOWLEDGE BASE
 # ============================================================
 
 with st.sidebar:
@@ -409,10 +412,6 @@ with st.sidebar:
 
     if statistics["documents"]:
 
-        st.caption(
-            "Documents:"
-        )
-
         for document in statistics[
             "documents"
         ]:
@@ -423,14 +422,15 @@ with st.sidebar:
 
 
 # ============================================================
-# MAIN TABS
+# TABS
 # ============================================================
 
-tab1, tab2, tab3 = st.tabs(
+tab1, tab2, tab3, tab4 = st.tabs(
     [
         "🤖 AI Tutor",
         "🔬 Evaluation",
         "📊 Research Results",
+        "🛡️ Responsible AI",
     ]
 )
 
@@ -466,6 +466,20 @@ with tab1:
                 "Please enter a question first."
             )
 
+        elif detect_unsafe_request(
+            question
+        ):
+
+            st.warning(
+                "This request requires a safety-restricted response."
+            )
+
+            st.markdown(
+                build_safe_response(
+                    question
+                )
+            )
+
         elif vector_index is None:
 
             st.warning(
@@ -488,13 +502,39 @@ with tab1:
 
             if not search_results:
 
-                st.warning(
-                    """
-                    I couldn't find sufficient information
-                    about this question in the current
-                    cybersecurity learning knowledge base.
-                    """
+                answer = (
+                    "I couldn't find sufficient information "
+                    "about this question in the current "
+                    "cybersecurity learning knowledge base."
                 )
+
+                st.warning(
+                    answer
+                )
+
+                responsible_result = (
+                    evaluate_responsible_ai(
+                        question,
+                        answer,
+                        False,
+                    )
+                )
+
+                if responsible_result[
+                    "warnings"
+                ]:
+
+                    with st.expander(
+                        "🛡️ Responsible AI Check"
+                    ):
+
+                        for warning in responsible_result[
+                            "warnings"
+                        ]:
+
+                            st.write(
+                                f"⚠️ {warning}"
+                            )
 
             else:
 
@@ -518,6 +558,38 @@ with tab1:
                     answer
                 )
 
+                # --------------------------------------------
+                # RESPONSIBLE AI CHECK
+                # --------------------------------------------
+
+                responsible_result = (
+                    evaluate_responsible_ai(
+                        question,
+                        answer,
+                        True,
+                    )
+                )
+
+                if responsible_result[
+                    "warnings"
+                ]:
+
+                    with st.expander(
+                        "🛡️ Responsible AI Diagnostics"
+                    ):
+
+                        for warning in responsible_result[
+                            "warnings"
+                        ]:
+
+                            st.write(
+                                f"⚠️ {warning}"
+                            )
+
+                # --------------------------------------------
+                # SOURCES
+                # --------------------------------------------
+
                 st.divider()
 
                 st.subheader(
@@ -536,7 +608,7 @@ with tab1:
                     ):
 
                         st.write(
-                            f"**Similarity:** "
+                            f"Similarity: "
                             f"{result['similarity']:.3f}"
                         )
 
@@ -546,36 +618,19 @@ with tab1:
 
 
 # ============================================================
-# TAB 2 — EVALUATION
+# TAB 2 — AUTOMATIC EVALUATION
 # ============================================================
 
 with tab2:
 
     st.header(
-        "🔬 RAG Evaluation"
+        "🔬 Automatic Evaluation"
     )
 
     st.write(
         """
-        This experiment compares two systems:
-
-        **Baseline:** GPT-OSS without retrieval
-
-        **RAG:** GPT-OSS with retrieved cybersecurity
-        knowledge-base context.
-
-        Both systems use the same underlying language model.
-        The main experimental difference is the presence or
-        absence of retrieval.
-        """
-    )
-
-    st.info(
-        """
-        Evaluation metrics are lightweight research-prototype
-        metrics. Keyword coverage and token F1 measure overlap
-        with reference answers. Grounding score is a lexical
-        heuristic and is NOT a complete factuality metric.
+        This experiment compares an LLM-only baseline with
+        the RAG system using the same GPT-OSS model.
         """
     )
 
@@ -584,35 +639,9 @@ with tab2:
     )
 
     st.write(
-        f"Evaluation questions loaded: "
+        f"Evaluation questions: "
         f"**{len(evaluation_questions)}**"
     )
-
-    if evaluation_questions:
-
-        preview_rows = []
-
-        for item in evaluation_questions:
-
-            preview_rows.append(
-                {
-                    "ID": item["id"],
-                    "Question": item["question"],
-                    "Topic": ", ".join(
-                        item.get(
-                            "expected_topics",
-                            [],
-                        )
-                    ),
-                }
-            )
-
-        st.dataframe(
-            pd.DataFrame(
-                preview_rows
-            ),
-            use_container_width=True,
-        )
 
     run_evaluation = st.button(
         "▶️ Run Full Evaluation",
@@ -624,7 +653,7 @@ with tab2:
         if not evaluation_questions:
 
             st.error(
-                "No evaluation questions were found."
+                "No evaluation questions found."
             )
 
         elif vector_index is None:
@@ -637,7 +666,7 @@ with tab2:
 
             results = []
 
-            progress_bar = st.progress(
+            progress = st.progress(
                 0
             )
 
@@ -652,10 +681,6 @@ with tab2:
                 start=1,
             ):
 
-                question_id = item[
-                    "id"
-                ]
-
                 question = item[
                     "question"
                 ]
@@ -669,13 +694,9 @@ with tab2:
                 ]
 
                 status.write(
-                    f"Evaluating {question_id}: "
+                    f"Evaluating {item['id']} — "
                     f"{question}"
                 )
-
-                # --------------------------------------------
-                # BASELINE
-                # --------------------------------------------
 
                 baseline_answer = (
                     generate_baseline_response(
@@ -686,10 +707,6 @@ with tab2:
                     )
                 )
 
-                # --------------------------------------------
-                # RETRIEVAL
-                # --------------------------------------------
-
                 search_results = (
                     search_vector_store(
                         vector_index,
@@ -698,10 +715,6 @@ with tab2:
                         top_k=4,
                     )
                 )
-
-                # --------------------------------------------
-                # RAG
-                # --------------------------------------------
 
                 rag_answer = (
                     generate_rag_response(
@@ -713,63 +726,23 @@ with tab2:
                     )
                 )
 
-                # --------------------------------------------
-                # CONTEXT
-                # --------------------------------------------
-
                 context = build_rag_context(
                     search_results
                 )
 
-                # --------------------------------------------
-                # METRICS
-                # --------------------------------------------
-
-                baseline_keyword_score = (
-                    keyword_coverage(
-                        baseline_answer,
-                        expected_keywords,
-                    )
-                )
-
-                rag_keyword_score = (
-                    keyword_coverage(
-                        rag_answer,
-                        expected_keywords,
-                    )
-                )
-
-                baseline_f1 = (
-                    token_f1_score(
-                        baseline_answer,
-                        reference_answer,
-                    )
-                )
-
-                rag_f1 = (
-                    token_f1_score(
-                        rag_answer,
-                        reference_answer,
-                    )
-                )
-
-                rag_grounding = (
-                    grounding_score(
-                        rag_answer,
-                        context,
-                    )
-                )
-
-                retrieval_ok = (
-                    retrieval_success(
-                        search_results
-                    )
-                )
-
                 results.append(
                     {
-                        "id": question_id,
-                        "question": question,
+                        "id":
+                            item["id"],
+
+                        "question":
+                            question,
+
+                        "evaluation_type":
+                            item.get(
+                                "evaluation_type",
+                                "in_scope",
+                            ),
 
                         "baseline_answer":
                             baseline_answer,
@@ -778,22 +751,39 @@ with tab2:
                             rag_answer,
 
                         "baseline_keyword_coverage":
-                            baseline_keyword_score,
+                            keyword_coverage(
+                                baseline_answer,
+                                expected_keywords,
+                            ),
 
                         "rag_keyword_coverage":
-                            rag_keyword_score,
+                            keyword_coverage(
+                                rag_answer,
+                                expected_keywords,
+                            ),
 
                         "baseline_token_f1":
-                            baseline_f1,
+                            token_f1_score(
+                                baseline_answer,
+                                reference_answer,
+                            ),
 
                         "rag_token_f1":
-                            rag_f1,
+                            token_f1_score(
+                                rag_answer,
+                                reference_answer,
+                            ),
 
                         "rag_grounding_score":
-                            rag_grounding,
+                            grounding_score(
+                                rag_answer,
+                                context,
+                            ),
 
                         "retrieval_success":
-                            retrieval_ok,
+                            retrieval_success(
+                                search_results
+                            ),
 
                         "retrieved_sources":
                             [
@@ -804,17 +794,13 @@ with tab2:
                     }
                 )
 
-                progress_bar.progress(
+                progress.progress(
                     index / total
                 )
 
             status.success(
-                "Evaluation completed successfully."
+                "Automatic evaluation completed."
             )
-
-            # --------------------------------------------
-            # SAVE TO SESSION STATE
-            # --------------------------------------------
 
             st.session_state[
                 "evaluation_results"
@@ -828,7 +814,7 @@ with tab2:
 
 
 # ============================================================
-# TAB 3 — RESEARCH RESULTS
+# TAB 3 — RESEARCH RESULTS + HUMAN EVALUATION
 # ============================================================
 
 with tab3:
@@ -846,11 +832,10 @@ with tab3:
 
         st.info(
             """
-            No evaluation results are available yet.
+            Run the automatic evaluation first.
 
-            Go to the Evaluation tab and click:
-
-            **Run Full Evaluation**
+            Then this section will allow you to review
+            and manually evaluate generated answers.
             """
         )
 
@@ -861,8 +846,12 @@ with tab3:
         )
 
         # ----------------------------------------------------
-        # METRIC CARDS
+        # AUTOMATIC METRICS
         # ----------------------------------------------------
+
+        st.subheader(
+            "Automatic Metrics"
+        )
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -894,8 +883,6 @@ with tab3:
                 f"{summary['rag_token_f1']:.2%}",
             )
 
-        st.divider()
-
         col5, col6 = st.columns(2)
 
         with col5:
@@ -908,153 +895,54 @@ with tab3:
         with col6:
 
             st.metric(
-                "Retrieval Success Rate",
+                "Retrieval Success",
                 f"{summary['retrieval_success_rate']:.2%}",
             )
 
+        st.divider()
+
         # ----------------------------------------------------
-        # COMPARISON TABLE
+        # HUMAN EVALUATION
         # ----------------------------------------------------
 
-        st.subheader(
-            "Baseline vs RAG"
+        st.header(
+            "👤 Human Evaluation"
         )
 
-        comparison_rows = []
+        st.write(
+            """
+            Review each RAG answer and rate it from 1 to 5.
+
+            **1 = Very poor**
+
+            **2 = Poor**
+
+            **3 = Acceptable**
+
+            **4 = Good**
+
+            **5 = Excellent**
+
+            Use the same criteria for every answer to reduce
+            evaluator inconsistency.
+            """
+        )
+
+        human_results = st.session_state.get(
+            "human_evaluation_results",
+            [],
+        )
 
         for result in results:
 
-            comparison_rows.append(
-                {
-                    "Question ID":
-                        result["id"],
-
-                    "Question":
-                        result["question"],
-
-                    "Baseline Keyword Coverage":
-                        round(
-                            result[
-                                "baseline_keyword_coverage"
-                            ],
-                            3,
-                        ),
-
-                    "RAG Keyword Coverage":
-                        round(
-                            result[
-                                "rag_keyword_coverage"
-                            ],
-                            3,
-                        ),
-
-                    "Baseline Token F1":
-                        round(
-                            result[
-                                "baseline_token_f1"
-                            ],
-                            3,
-                        ),
-
-                    "RAG Token F1":
-                        round(
-                            result[
-                                "rag_token_f1"
-                            ],
-                            3,
-                        ),
-
-                    "RAG Grounding":
-                        round(
-                            result[
-                                "rag_grounding_score"
-                            ],
-                            3,
-                        ),
-
-                    "Retrieval":
-                        "Yes"
-                        if result[
-                            "retrieval_success"
-                        ]
-                        else "No",
-                }
-            )
-
-        comparison_df = pd.DataFrame(
-            comparison_rows
-        )
-
-        st.dataframe(
-            comparison_df,
-            use_container_width=True,
-        )
-
-        # ----------------------------------------------------
-        # BAR CHART
-        # ----------------------------------------------------
-
-        st.subheader(
-            "Average Metric Comparison"
-        )
-
-        chart_data = pd.DataFrame(
-            {
-                "System": [
-                    "Baseline",
-                    "RAG",
-                ],
-
-                "Keyword Coverage": [
-                    summary[
-                        "baseline_keyword_coverage"
-                    ],
-                    summary[
-                        "rag_keyword_coverage"
-                    ],
-                ],
-
-                "Token F1": [
-                    summary[
-                        "baseline_token_f1"
-                    ],
-                    summary[
-                        "rag_token_f1"
-                    ],
-                ],
-            }
-        )
-
-        st.bar_chart(
-            chart_data.set_index(
-                "System"
-            )
-        )
-
-        # ----------------------------------------------------
-        # INDIVIDUAL RESULTS
-        # ----------------------------------------------------
-
-        st.subheader(
-            "Detailed Evaluation Results"
-        )
-
-        for result in results:
+            result_id = result[
+                "id"
+            ]
 
             with st.expander(
-                f"{result['id']} — "
+                f"{result_id} — "
                 f"{result['question']}"
             ):
-
-                st.markdown(
-                    "### Baseline Answer"
-                )
-
-                st.write(
-                    result[
-                        "baseline_answer"
-                    ]
-                )
 
                 st.markdown(
                     "### RAG Answer"
@@ -1064,41 +952,6 @@ with tab3:
                     result[
                         "rag_answer"
                     ]
-                )
-
-                st.markdown(
-                    "### Metrics"
-                )
-
-                metric_data = {
-                    "Baseline Keyword Coverage":
-                        result[
-                            "baseline_keyword_coverage"
-                        ],
-
-                    "RAG Keyword Coverage":
-                        result[
-                            "rag_keyword_coverage"
-                        ],
-
-                    "Baseline Token F1":
-                        result[
-                            "baseline_token_f1"
-                        ],
-
-                    "RAG Token F1":
-                        result[
-                            "rag_token_f1"
-                        ],
-
-                    "RAG Grounding":
-                        result[
-                            "rag_grounding_score"
-                        ],
-                }
-
-                st.json(
-                    metric_data
                 )
 
                 st.markdown(
@@ -1120,85 +973,405 @@ with tab3:
                 else:
 
                     st.write(
-                        "No sources retrieved."
+                        "No retrieved sources."
+                    )
+
+                st.divider()
+
+                st.markdown(
+                    "### Rate this answer"
+                )
+
+                scores = {}
+
+                scores[
+                    "factual_correctness"
+                ] = st.slider(
+                    "1. Factual Correctness",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_factual",
+                )
+
+                scores[
+                    "groundedness"
+                ] = st.slider(
+                    "2. Groundedness / Source Support",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_grounding",
+                )
+
+                scores[
+                    "educational_usefulness"
+                ] = st.slider(
+                    "3. Educational Usefulness",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_education",
+                )
+
+                scores[
+                    "clarity"
+                ] = st.slider(
+                    "4. Clarity",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_clarity",
+                )
+
+                scores[
+                    "difficulty_appropriateness"
+                ] = st.slider(
+                    "5. Appropriate Difficulty",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_difficulty",
+                )
+
+                scores[
+                    "overall_quality"
+                ] = st.slider(
+                    "6. Overall Quality",
+                    1,
+                    5,
+                    3,
+                    key=f"{result_id}_overall",
+                )
+
+                comments = st.text_area(
+                    "Evaluator Comments",
+                    key=f"{result_id}_comments",
+                    placeholder=(
+                        "Example: Accurate explanation, "
+                        "but could provide a simpler example."
+                    ),
+                )
+
+                if st.button(
+                    f"Save Evaluation — {result_id}",
+                    key=f"save_{result_id}",
+                ):
+
+                    average_score = (
+                        calculate_human_evaluation_average(
+                            scores
+                        )
+                    )
+
+                    human_record = {
+                        "id":
+                            result_id,
+
+                        "question":
+                            result["question"],
+
+                        "factual_correctness":
+                            scores[
+                                "factual_correctness"
+                            ],
+
+                        "groundedness":
+                            scores[
+                                "groundedness"
+                            ],
+
+                        "educational_usefulness":
+                            scores[
+                                "educational_usefulness"
+                            ],
+
+                        "clarity":
+                            scores[
+                                "clarity"
+                            ],
+
+                        "difficulty_appropriateness":
+                            scores[
+                                "difficulty_appropriateness"
+                            ],
+
+                        "overall_quality":
+                            scores[
+                                "overall_quality"
+                            ],
+
+                        "average_score":
+                            average_score,
+
+                        "interpretation":
+                            calculate_interpretation(
+                                average_score
+                            ),
+
+                        "comments":
+                            comments,
+                    }
+
+                    existing = [
+                        item
+                        for item in human_results
+                        if item["id"] != result_id
+                    ]
+
+                    existing.append(
+                        human_record
+                    )
+
+                    human_results = existing
+
+                    st.session_state[
+                        "human_evaluation_results"
+                    ] = human_results
+
+                    st.success(
+                        f"Evaluation saved for {result_id}."
                     )
 
         # ----------------------------------------------------
-        # DOWNLOAD RESULTS
+        # HUMAN RESULTS SUMMARY
         # ----------------------------------------------------
 
-        st.divider()
+        if human_results:
 
-        st.subheader(
-            "⬇️ Export Evaluation"
-        )
+            st.divider()
 
-        results_json = json.dumps(
-            results,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-        st.download_button(
-            label="Download Detailed JSON Results",
-            data=results_json,
-            file_name=(
-                "rag_evaluation_results.json"
-            ),
-            mime="application/json",
-        )
-
-        csv_data = (
-            comparison_df
-            .to_csv(
-                index=False
+            st.header(
+                "📈 Human Evaluation Summary"
             )
-        )
 
-        st.download_button(
-            label="Download Comparison CSV",
-            data=csv_data,
-            file_name=(
-                "rag_baseline_comparison.csv"
-            ),
-            mime="text/csv",
-        )
+            human_df = pd.DataFrame(
+                human_results
+            )
 
-        # ----------------------------------------------------
-        # RESEARCH INTERPRETATION
-        # ----------------------------------------------------
+            st.dataframe(
+                human_df,
+                use_container_width=True,
+            )
 
-        st.divider()
+            average_human_score = (
+                human_df[
+                    "average_score"
+                ].mean()
+            )
 
-        st.subheader(
-            "🔬 Research Interpretation"
-        )
+            st.metric(
+                "Average Human Evaluation Score",
+                f"{average_human_score:.2f} / 5.00",
+            )
 
-        st.markdown(
-            """
-            This experiment compares the same language model
-            under two conditions:
+            # ------------------------------------------------
+            # HUMAN SCORE CHART
+            # ------------------------------------------------
 
-            **Condition A — Baseline**
+            chart_columns = [
+                "factual_correctness",
+                "groundedness",
+                "educational_usefulness",
+                "clarity",
+                "difficulty_appropriateness",
+                "overall_quality",
+            ]
 
-            The model receives only the student's question.
+            chart_data = pd.DataFrame(
+                {
+                    "Dimension":
+                        chart_columns,
 
-            **Condition B — RAG**
+                    "Average Score":
+                        [
+                            human_df[
+                                column
+                            ].mean()
+                            for column in chart_columns
+                        ],
+                }
+            )
 
-            The model receives the student's question plus
-            retrieved passages from the cybersecurity
-            knowledge base.
+            st.bar_chart(
+                chart_data.set_index(
+                    "Dimension"
+                )
+            )
 
-            The purpose is to investigate whether retrieval
-            improves source-grounded answering.
+            # ------------------------------------------------
+            # DOWNLOAD HUMAN EVALUATION
+            # ------------------------------------------------
 
-            The current automatic metrics are intended for
-            prototype evaluation. Human assessment should be
-            added in a later phase to evaluate factual
-            correctness, educational usefulness, clarity,
-            and quality of explanations.
-            """
-        )
+            human_csv = (
+                human_df.to_csv(
+                    index=False
+                )
+            )
+
+            st.download_button(
+                "⬇️ Download Human Evaluation CSV",
+                data=human_csv,
+                file_name=(
+                    "human_evaluation_results.csv"
+                ),
+                mime="text/csv",
+            )
+
+
+# ============================================================
+# TAB 4 — RESPONSIBLE AI
+# ============================================================
+
+with tab4:
+
+    st.header(
+        "🛡️ Responsible AI & Safety"
+    )
+
+    st.write(
+        """
+        This section documents and tests the responsible-AI
+        mechanisms implemented in the tutor.
+        """
+    )
+
+    st.subheader(
+        "1. Knowledge Boundaries"
+    )
+
+    st.write(
+        """
+        The RAG system uses a relevance threshold before
+        passing retrieved evidence to the language model.
+
+        If sufficiently relevant evidence is not found, the
+        tutor communicates that the current knowledge base
+        does not contain enough information.
+        """
+    )
+
+    st.subheader(
+        "2. Source Grounding"
+    )
+
+    st.write(
+        """
+        Retrieved document names and page numbers are shown
+        with the supporting evidence.
+
+        The system is instructed not to invent citations.
+        """
+    )
+
+    st.subheader(
+        "3. Uncertainty"
+    )
+
+    st.write(
+        """
+        The tutor is instructed to communicate uncertainty
+        instead of fabricating an answer when evidence is
+        insufficient.
+        """
+    )
+
+    st.subheader(
+        "4. Cybersecurity Safety"
+    )
+
+    st.write(
+        """
+        A lightweight rule-based safety layer detects several
+        potentially harmful cybersecurity requests and
+        redirects the user toward defensive or educational
+        information.
+        """
+    )
+
+    st.subheader(
+        "5. Privacy Considerations"
+    )
+
+    st.write(
+        """
+        The prototype does not require students to provide
+        personal information.
+
+        Evaluation results should be treated as research
+        data and should not contain unnecessary personal
+        information.
+        """
+    )
+
+    st.subheader(
+        "6. Important Limitation"
+    )
+
+    st.warning(
+        """
+        These mechanisms are research-prototype safeguards.
+        They do not guarantee factual accuracy, complete
+        cybersecurity safety, or absence of hallucinations.
+
+        Human evaluation and broader testing are required
+        before making stronger claims.
+        """
+    )
+
+    st.divider()
+
+    st.subheader(
+        "🧪 Test Safety Layer"
+    )
+
+    safety_test_question = st.text_input(
+        "Enter a cybersecurity request to test",
+        placeholder=(
+            "Example: How do I detect ransomware?"
+        ),
+    )
+
+    if st.button(
+        "Run Safety Check"
+    ):
+
+        if not safety_test_question.strip():
+
+            st.warning(
+                "Enter a test question."
+            )
+
+        else:
+
+            unsafe = detect_unsafe_request(
+                safety_test_question
+            )
+
+            if unsafe:
+
+                st.error(
+                    "Potentially unsafe request detected."
+                )
+
+                st.markdown(
+                    build_safe_response(
+                        safety_test_question
+                    )
+                )
+
+            else:
+
+                st.success(
+                    "No unsafe pattern was detected "
+                    "by the current rule-based checker."
+                )
+
+                st.caption(
+                    "This does not guarantee that a request "
+                    "is completely safe; it only means that "
+                    "the current rules did not match it."
+                )
 
 
 # ============================================================
@@ -1222,12 +1395,12 @@ st.markdown(
 
     <br><br>
 
-    <strong>Phase 3 Experimental Design</strong>
+    <strong>Phase 4</strong>
 
     <br><br>
 
-    LLM-only baseline → RAG system → Automatic comparison →
-    Research results
+    Automatic Evaluation → Human Evaluation →
+    Responsible AI Checks → Research Evidence
 
     </div>
     """,
