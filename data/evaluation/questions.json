@@ -1,148 +1,290 @@
 [
-    {
-        "id": "Q001",
-        "question": "What is DNS?",
-        "expected_keywords": [
-            "domain",
-            "name",
-            "system",
-            "IP",
-            "address"
-        ],
-        "reference_answer": "DNS stands for Domain Name System. It translates human-readable domain names into IP addresses so that devices can locate services on a network.",
-        "expected_topics": [
-            "DNS"
-        ]
-    },
-    {
-        "id": "Q002",
-        "question": "What is a firewall?",
-        "expected_keywords": [
-            "firewall",
-            "network",
-            "traffic",
-            "rules",
-            "security"
-        ],
-        "reference_answer": "A firewall is a security mechanism that monitors and controls network traffic according to defined security rules.",
-        "expected_topics": [
-            "firewall"
-        ]
-    },
-    {
-        "id": "Q003",
-        "question": "What is TCP?",
-        "expected_keywords": [
-            "TCP",
-            "connection",
-            "reliable",
-            "data",
-            "transport"
-        ],
-        "reference_answer": "TCP is a transport-layer protocol that provides reliable, connection-oriented delivery of data between networked devices.",
-        "expected_topics": [
-            "TCP"
-        ]
-    },
-    {
-        "id": "Q004",
-        "question": "What is an IP address?",
-        "expected_keywords": [
-            "IP",
-            "address",
-            "device",
-            "network",
-            "identify"
-        ],
-        "reference_answer": "An IP address is a numerical address used to identify a device or network interface and enable communication across an IP network.",
-        "expected_topics": [
-            "IP address"
-        ]
-    },
-    {
-        "id": "Q005",
-        "question": "What is HTTPS?",
-        "expected_keywords": [
-            "HTTPS",
-            "HTTP",
-            "TLS",
-            "encryption",
-            "secure"
-        ],
-        "reference_answer": "HTTPS is HTTP protected by TLS. It helps provide confidentiality and integrity for data exchanged between a client and a web server.",
-        "expected_topics": [
-            "HTTPS"
-        ]
-    },
-    {
-        "id": "Q006",
-        "question": "What is a VPN?",
-        "expected_keywords": [
-            "VPN",
-            "network",
-            "encrypted",
-            "connection",
-            "secure"
-        ],
-        "reference_answer": "A VPN creates a protected connection over a network and can encrypt traffic between the user and the VPN endpoint.",
-        "expected_topics": [
-            "VPN"
-        ]
-    },
-    {
-        "id": "Q007",
-        "question": "What is a cybersecurity threat?",
-        "expected_keywords": [
-            "threat",
-            "security",
-            "attack",
-            "system",
-            "risk"
-        ],
-        "reference_answer": "A cybersecurity threat is a potential event, actor, or circumstance that can exploit a weakness and negatively affect the confidentiality, integrity, or availability of systems or data.",
-        "expected_topics": [
-            "cybersecurity"
-        ]
-    },
-    {
-        "id": "Q008",
-        "question": "What is network security?",
-        "expected_keywords": [
-            "network",
-            "security",
-            "protect",
-            "systems",
-            "data"
-        ],
-        "reference_answer": "Network security involves technologies, controls, and practices used to protect networks, systems, and data from unauthorized access and attacks.",
-        "expected_topics": [
-            "network security"
-        ]
-    },
-    {
-        "id": "Q009",
-        "question": "What is malware?",
-        "expected_keywords": [
-            "malware",
-            "software",
-            "malicious",
-            "system",
-            "attack"
-        ],
-        "reference_answer": "Malware is malicious software designed to disrupt, damage, gain unauthorized access to, or otherwise compromise systems or data.",
-        "expected_topics": [
-            "malware"
-        ]
-    },
-    {
-        "id": "Q010",
-        "question": "What is the largest city in Pakistan?",
-        "expected_keywords": [
-            "Karachi"
-        ],
-        "reference_answer": "The question is outside the cybersecurity knowledge domain used by this evaluation.",
-        "expected_topics": [
-            "out_of_scope"
-        ]
-    }
+  {
+    "id": 1,
+    "category": "Networking",
+    "question": "What is a computer network?",
+    "expected_keywords": ["devices", "communication", "data", "network"],
+    "reference_answer": "A computer network is a group of connected devices that communicate and exchange data."
+  },
+  {
+    "id": 2,
+    "category": "Networking",
+    "question": "What is an IP address?",
+    "expected_keywords": ["IP", "address", "device", "network"],
+    "reference_answer": "An IP address is a logical address used to identify a device or network interface on a network."
+  },
+  {
+    "id": 3,
+    "category": "Networking",
+    "question": "What is the purpose of a router?",
+    "expected_keywords": ["router", "network", "packets", "forward"],
+    "reference_answer": "A router connects networks and forwards packets toward their destination."
+  },
+  {
+    "id": 4,
+    "category": "Networking",
+    "question": "What is a firewall?",
+    "expected_keywords": ["firewall", "traffic", "network", "rules", "block"],
+    "reference_answer": "A firewall monitors and controls network traffic according to security rules."
+  },
+  {
+    "id": 5,
+    "category": "Networking",
+    "question": "What is the difference between TCP and UDP?",
+    "expected_keywords": ["TCP", "UDP", "connection", "reliable", "connectionless"],
+    "reference_answer": "TCP is connection-oriented and provides reliable delivery, while UDP is connectionless and does not provide the same reliability mechanisms."
+  },
+
+  {
+    "id": 6,
+    "category": "TCP-IP",
+    "question": "What is the TCP three-way handshake?",
+    "expected_keywords": ["SYN", "SYN-ACK", "ACK", "connection", "TCP"],
+    "reference_answer": "The TCP three-way handshake establishes a connection using SYN, SYN-ACK, and ACK messages."
+  },
+  {
+    "id": 7,
+    "category": "TCP-IP",
+    "question": "What is a TCP port?",
+    "expected_keywords": ["TCP", "port", "application", "service"],
+    "reference_answer": "A TCP port identifies an application or service endpoint associated with network communication."
+  },
+  {
+    "id": 8,
+    "category": "TCP-IP",
+    "question": "What is the purpose of DNS?",
+    "expected_keywords": ["DNS", "domain", "IP", "name", "address"],
+    "reference_answer": "DNS translates domain names into IP addresses so systems can locate network services."
+  },
+  {
+    "id": 9,
+    "category": "TCP-IP",
+    "question": "What happens when a user enters a website domain into a browser?",
+    "expected_keywords": ["DNS", "IP", "server", "HTTP", "browser"],
+    "reference_answer": "The browser typically resolves the domain through DNS, connects to the destination server, and then requests the web resource."
+  },
+  {
+    "id": 10,
+    "category": "TCP-IP",
+    "question": "What is HTTPS?",
+    "expected_keywords": ["HTTPS", "HTTP", "TLS", "encryption", "security"],
+    "reference_answer": "HTTPS is HTTP protected using TLS to provide security for communication between a client and server."
+  },
+
+  {
+    "id": 11,
+    "category": "Web Security",
+    "question": "What is SQL injection?",
+    "expected_keywords": ["SQL", "injection", "database", "input", "query"],
+    "reference_answer": "SQL injection is an attack in which malicious input can alter the intended structure of a database query."
+  },
+  {
+    "id": 12,
+    "category": "Web Security",
+    "question": "What is cross-site scripting?",
+    "expected_keywords": ["XSS", "script", "browser", "web", "input"],
+    "reference_answer": "Cross-site scripting is a web vulnerability where injected script content can execute in a user's browser."
+  },
+  {
+    "id": 13,
+    "category": "Web Security",
+    "question": "What is input validation?",
+    "expected_keywords": ["input", "validation", "security", "application", "data"],
+    "reference_answer": "Input validation checks whether data received by an application conforms to expected rules."
+  },
+  {
+    "id": 14,
+    "category": "Web Security",
+    "question": "Why is HTTPS important for web security?",
+    "expected_keywords": ["HTTPS", "TLS", "encryption", "communication", "security"],
+    "reference_answer": "HTTPS uses TLS to protect communication between a browser and web server."
+  },
+  {
+    "id": 15,
+    "category": "Web Security",
+    "question": "What is session management?",
+    "expected_keywords": ["session", "user", "authentication", "application", "cookie"],
+    "reference_answer": "Session management maintains a user's authenticated state while they interact with an application."
+  },
+
+  {
+    "id": 16,
+    "category": "Authentication",
+    "question": "What is authentication?",
+    "expected_keywords": ["authentication", "identity", "user", "verify"],
+    "reference_answer": "Authentication verifies the identity of a user or system."
+  },
+  {
+    "id": 17,
+    "category": "Authentication",
+    "question": "What is authorization?",
+    "expected_keywords": ["authorization", "access", "permissions", "resource"],
+    "reference_answer": "Authorization determines what an authenticated user or system is allowed to access or perform."
+  },
+  {
+    "id": 18,
+    "category": "Authentication",
+    "question": "What is multi-factor authentication?",
+    "expected_keywords": ["MFA", "authentication", "factors", "identity", "security"],
+    "reference_answer": "Multi-factor authentication requires multiple independent factors to verify identity."
+  },
+  {
+    "id": 19,
+    "category": "Authentication",
+    "question": "Why should passwords not be stored in plaintext?",
+    "expected_keywords": ["password", "plaintext", "hash", "security", "database"],
+    "reference_answer": "Passwords should not be stored in plaintext because compromise of the database would directly expose the passwords; password hashing provides protection."
+  },
+  {
+    "id": 20,
+    "category": "Authentication",
+    "question": "What is password hashing?",
+    "expected_keywords": ["password", "hash", "one-way", "storage", "security"],
+    "reference_answer": "Password hashing transforms a password into a value intended for secure storage rather than storing the original password."
+  },
+
+  {
+    "id": 21,
+    "category": "Cryptography",
+    "question": "What is encryption?",
+    "expected_keywords": ["encryption", "plaintext", "ciphertext", "key", "data"],
+    "reference_answer": "Encryption transforms plaintext into ciphertext using a cryptographic process and key."
+  },
+  {
+    "id": 22,
+    "category": "Cryptography",
+    "question": "What is symmetric encryption?",
+    "expected_keywords": ["symmetric", "key", "encryption", "decryption"],
+    "reference_answer": "Symmetric encryption uses the same secret key for encryption and decryption."
+  },
+  {
+    "id": 23,
+    "category": "Cryptography",
+    "question": "What is asymmetric cryptography?",
+    "expected_keywords": ["asymmetric", "public", "private", "key", "cryptography"],
+    "reference_answer": "Asymmetric cryptography uses a public key and a private key for cryptographic operations."
+  },
+  {
+    "id": 24,
+    "category": "Cryptography",
+    "question": "What is a digital signature?",
+    "expected_keywords": ["digital", "signature", "private", "key", "integrity"],
+    "reference_answer": "A digital signature uses cryptographic techniques to provide evidence related to authenticity and integrity."
+  },
+  {
+    "id": 25,
+    "category": "Cryptography",
+    "question": "What is a cryptographic hash?",
+    "expected_keywords": ["hash", "function", "fixed", "input", "integrity"],
+    "reference_answer": "A cryptographic hash function maps input data to a fixed-size digest and is commonly used for integrity verification."
+  },
+
+  {
+    "id": 26,
+    "category": "SOC",
+    "question": "What is a Security Operations Center?",
+    "expected_keywords": ["SOC", "security", "monitoring", "incident", "threat"],
+    "reference_answer": "A Security Operations Center monitors systems and security events to detect and respond to threats."
+  },
+  {
+    "id": 27,
+    "category": "SOC",
+    "question": "What is a SIEM?",
+    "expected_keywords": ["SIEM", "logs", "events", "security", "monitoring"],
+    "reference_answer": "A SIEM collects and analyzes security logs and events to support monitoring and detection."
+  },
+  {
+    "id": 28,
+    "category": "SOC",
+    "question": "Why are security logs important?",
+    "expected_keywords": ["logs", "events", "investigation", "security", "detection"],
+    "reference_answer": "Security logs provide records of events that can support detection, investigation, and incident response."
+  },
+  {
+    "id": 29,
+    "category": "SOC",
+    "question": "What is an alert in a SOC?",
+    "expected_keywords": ["alert", "SOC", "event", "suspicious", "analyst"],
+    "reference_answer": "A security alert identifies an event or activity that may require investigation by a security analyst."
+  },
+  {
+    "id": 30,
+    "category": "SOC",
+    "question": "What is incident response?",
+    "expected_keywords": ["incident", "response", "security", "containment", "recovery"],
+    "reference_answer": "Incident response is the process of identifying, analyzing, containing, and recovering from security incidents."
+  },
+
+  {
+    "id": 31,
+    "category": "Defensive Security",
+    "question": "What is vulnerability management?",
+    "expected_keywords": ["vulnerability", "management", "identify", "risk", "remediation"],
+    "reference_answer": "Vulnerability management involves identifying, assessing, prioritizing, and addressing security vulnerabilities."
+  },
+  {
+    "id": 32,
+    "category": "Defensive Security",
+    "question": "Why is patch management important?",
+    "expected_keywords": ["patch", "vulnerability", "security", "software", "update"],
+    "reference_answer": "Patch management helps reduce security risk by applying updates that address vulnerabilities and software issues."
+  },
+  {
+    "id": 33,
+    "category": "Defensive Security",
+    "question": "What is network segmentation?",
+    "expected_keywords": ["network", "segmentation", "isolate", "security", "traffic"],
+    "reference_answer": "Network segmentation divides a network into separate segments to limit communication and reduce security exposure."
+  },
+  {
+    "id": 34,
+    "category": "Defensive Security",
+    "question": "What is endpoint security?",
+    "expected_keywords": ["endpoint", "security", "device", "protection", "threat"],
+    "reference_answer": "Endpoint security protects devices such as computers and servers against security threats."
+  },
+  {
+    "id": 35,
+    "category": "Defensive Security",
+    "question": "What is the principle of least privilege?",
+    "expected_keywords": ["least privilege", "access", "permissions", "minimum", "security"],
+    "reference_answer": "Least privilege means giving users or systems only the minimum permissions required to perform their tasks."
+  },
+
+  {
+    "id": 36,
+    "category": "Malware",
+    "question": "What is malware?",
+    "expected_keywords": ["malware", "software", "malicious", "system"],
+    "reference_answer": "Malware is malicious software designed to perform harmful or unauthorized actions on systems."
+  },
+  {
+    "id": 37,
+    "category": "Malware",
+    "question": "What is ransomware?",
+    "expected_keywords": ["ransomware", "files", "encrypt", "ransom", "malware"],
+    "reference_answer": "Ransomware is malware that commonly encrypts or otherwise restricts access to data and demands payment."
+  },
+  {
+    "id": 38,
+    "category": "Malware",
+    "question": "What is phishing?",
+    "expected_keywords": ["phishing", "email", "credentials", "social engineering", "victim"],
+    "reference_answer": "Phishing is a social engineering technique that attempts to deceive users into revealing information or performing unsafe actions."
+  },
+
+  {
+    "id": 39,
+    "category": "Out-of-Scope",
+    "question": "What is the largest city in Pakistan?",
+    "expected_keywords": ["Karachi"],
+    "reference_answer": "Karachi is the largest city in Pakistan by population."
+  },
+  {
+    "id": 40,
+    "category": "Out-of-Scope",
+    "question": "What is the capital of France?",
+    "expected_keywords": ["Paris"],
+    "reference_answer": "Paris is the capital of France."
+  }
 ]
