@@ -4,11 +4,15 @@ from pathlib import Path
 from typing import Dict, List
 
 
+# ============================================================
+# DATASET LOADING
+# ============================================================
+
 def load_evaluation_questions(
     evaluation_file: str = "data/evaluation/questions.json",
 ) -> List[Dict]:
     """
-    Load evaluation questions from a JSON file.
+    Load evaluation questions from JSON.
     """
 
     path = Path(
@@ -26,6 +30,10 @@ def load_evaluation_questions(
 
         return json.load(file)
 
+
+# ============================================================
+# TEXT NORMALIZATION
+# ============================================================
 
 def normalize_text(
     text: str,
@@ -51,6 +59,10 @@ def normalize_text(
     return text.strip()
 
 
+# ============================================================
+# KEYWORD COVERAGE
+# ============================================================
+
 def keyword_coverage(
     answer: str,
     expected_keywords: List[str],
@@ -58,9 +70,6 @@ def keyword_coverage(
     """
     Calculate the percentage of expected keywords
     found in the generated answer.
-
-    This is a simple lexical metric and should not be
-    interpreted as a complete measure of answer quality.
     """
 
     if not expected_keywords:
@@ -86,15 +95,19 @@ def keyword_coverage(
     )
 
 
+# ============================================================
+# TOKEN F1
+# ============================================================
+
 def token_f1_score(
     prediction: str,
     reference: str,
 ) -> float:
     """
-    Calculate token-level F1 between generated answer
-    and reference answer.
+    Calculate token-level F1.
 
-    This is a lightweight automatic metric.
+    This is a lightweight lexical metric and does not
+    represent semantic correctness by itself.
     """
 
     prediction_tokens = set(
@@ -133,10 +146,7 @@ def token_f1_score(
         / len(reference_tokens)
     )
 
-    if (
-        precision + recall
-        == 0
-    ):
+    if precision + recall == 0:
         return 0.0
 
     return (
@@ -150,17 +160,20 @@ def token_f1_score(
     )
 
 
+# ============================================================
+# GROUNDING HEURISTIC
+# ============================================================
+
 def grounding_score(
     answer: str,
     context: str,
 ) -> float:
     """
-    Estimate how much of the generated answer overlaps
-    lexically with the retrieved context.
+    Estimate lexical overlap between answer and retrieved
+    context.
 
-    IMPORTANT:
-    This is only a heuristic grounding indicator.
-    It is NOT a full factuality or faithfulness metric.
+    This is only a heuristic indicator. It is NOT a complete
+    factuality or hallucination metric.
     """
 
     answer_tokens = set(
@@ -192,12 +205,15 @@ def grounding_score(
     )
 
 
+# ============================================================
+# RETRIEVAL SUCCESS
+# ============================================================
+
 def retrieval_success(
     search_results: List[Dict],
 ) -> bool:
     """
-    Determine whether the retrieval system returned
-    at least one sufficiently relevant result.
+    Determine whether relevant retrieval results exist.
     """
 
     return bool(
@@ -205,12 +221,13 @@ def retrieval_success(
     )
 
 
+# ============================================================
+# AVERAGE
+# ============================================================
+
 def calculate_average(
     values: List[float],
 ) -> float:
-    """
-    Calculate an average safely.
-    """
 
     if not values:
         return 0.0
@@ -220,11 +237,15 @@ def calculate_average(
     )
 
 
+# ============================================================
+# AUTOMATIC SUMMARY
+# ============================================================
+
 def summarize_results(
     results: List[Dict],
 ) -> Dict:
     """
-    Produce aggregate evaluation statistics.
+    Calculate aggregate automatic evaluation statistics.
     """
 
     if not results:
@@ -306,3 +327,83 @@ def summarize_results(
                 ]
             ),
     }
+
+
+# ============================================================
+# HUMAN EVALUATION SCORING
+# ============================================================
+
+HUMAN_EVALUATION_DIMENSIONS = [
+    "factual_correctness",
+    "groundedness",
+    "educational_usefulness",
+    "clarity",
+    "difficulty_appropriateness",
+    "overall_quality",
+]
+
+
+def calculate_human_evaluation_average(
+    evaluation: Dict,
+) -> float:
+    """
+    Calculate average human score across the six
+    evaluation dimensions.
+
+    Each dimension uses a 1–5 scale.
+    """
+
+    values = []
+
+    for dimension in HUMAN_EVALUATION_DIMENSIONS:
+
+        value = evaluation.get(
+            dimension
+        )
+
+        if value is None:
+            continue
+
+        try:
+            values.append(
+                float(value)
+            )
+
+        except (
+            ValueError,
+            TypeError,
+        ):
+            continue
+
+    if not values:
+        return 0.0
+
+    return sum(values) / len(
+        values
+    )
+
+
+def calculate_interpretation(
+    average_score: float,
+) -> str:
+    """
+    Provide a neutral descriptive interpretation of
+    the average score.
+    """
+
+    if average_score == 0:
+        return "Not evaluated"
+
+    if average_score < 2:
+        return "Low"
+
+    if average_score < 3:
+        return "Below moderate"
+
+    if average_score < 4:
+        return "Moderate"
+
+    if average_score < 4.5:
+        return "High"
+
+    return "Very high"
